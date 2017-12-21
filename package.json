@@ -1,0 +1,31 @@
+{
+    "name": "newspot-test",
+    "version": "1.0.0",
+    "description": "Newspot research and attempts",
+    "main": "index.js",
+    "scripts": {
+        "worker": "node worker.js",
+        "server": "node server.js",
+        "start": "http-server .  --ssl --cert ~/server.crt --key ~/key.pem"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/claudiucelfilip/newspot-test.git"
+    },
+    "author": "",
+    "license": "ISC",
+    "bugs": {
+        "url": "https://github.com/claudiucelfilip/newspot-test/issues"
+    },
+    "homepage": "https://github.com/claudiucelfilip/newspot-test#readme",
+    "dependencies": {
+        "express": "^4.16.2",
+        "koa": "^2.4.1",
+        "rxjs": "^5.5.5",
+        "ws": "^3.3.2"
+    },
+    "devDependencies": {
+        "http-server": "^0.10.0",
+        "https-server": "^0.1.2"
+    }
+}

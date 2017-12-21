@@ -1,0 +1,23 @@
+docker service create \
+    --name hydra-router \
+    --network servicenet \
+    --follow \
+    --update-delay 10s \
+    --constraint=node.role==manager \
+    --env HYDRA_REDIS_URL="redis://redis-17788.c9.us-east-1-4.ec2.cloud.redislabs.com:17788" \
+    --env HYDRA_SERVICE="hydra-router:1.5.12" \
+    --publish 80:80 \
+    flywheelsports/hydra-router:1.5.12
+
+
+
+docker service create \
+    --name hello-service \
+    --network servicenet \
+    --update-delay 10s \
+    --with-registry-auth \
+    --constraint=node.role==worker \
+    --env HYDRA_REDIS_URL="redis://redis-17788.c9.us-east-1-4.ec2.cloud.redislabs.com:17788" \
+    --env HYDRA_SERVICE="claudiucelfilip/worker-service:0.0.1" \
+    --replicas=5 \
+    claudiucelfilip/worker-service:0.0.1
