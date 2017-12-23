@@ -6,8 +6,9 @@ var app = express();
 
 app.use(express.static('.'));
 const server = https.createServer({
-    key: fs.readFileSync('./privateKey.key'),
-    cert: fs.readFileSync('./certificate.crt')
+    key: fs.readFileSync('./key.pem'),
+    cert: fs.readFileSync('./cert.pem'),
+    passphrase: 'lola'
 }, app);
 
 const wServer = new WebSocket.Server({ server });
@@ -27,27 +28,31 @@ wServer.on('connection', function(ws) {
         }
     }
 
-    ws.on('message', function(message) {
+    ws.on('message', (message) => {
         let action = JSON.parse(message);
 
         switch (action.type) {
-            case 'sendPeer':
+            case 'peer':
                 peers[action.data.uuid] = ws;
                 currentPeer = action.data.uuid;
                 break;
             case 'sendOffer':
                 offers.push(action.data);
-                console.log(offers);
+                console.log(offers.map(offer => offer.id));
                 broadcast({
-                    type: 'newOffer'
+                    type: 'newOffer',
+                    data: {
+                        id: action.data.id,
+                        uuid: action.data.uuid
+                    }
                 });
                 break;
             case 'requestOffer':
-                console.log(offers);
-
+                console.log(offers.map(offer => offer.uuid));
+                let offerId = (action.data && action.data.id);
                 sendMessage({
                     type: 'offer',
-                    data: getOffer()
+                    data: getOffer(offerId)
                 });
                 break;
             case 'sendAnswer':
@@ -65,25 +70,36 @@ wServer.on('connection', function(ws) {
                 }
             });
         }
-    
+
     });
 
-    
-    ws.on('close', function() {
+
+    ws.on('close', () => {
         delete peers[currentPeer];
         offers = offers.filter((offer) => {
             return offer.uuid !== currentPeer;
         });
     });
 
+    ws.on('error', (err) => {
+        console.log(err);
+    });
+
     function removeOffer(id) {
         return offers = offers.filter(offer => offer.id !== id);
     }
-    
-    function getOffer() {
-        var index = offers.findIndex((offer) => {
-            return offer.uuid !== currentPeer;
-        });
+
+    function getOffer(id) {
+        var index;
+        if (id) {
+            index = offers.findIndex((offer) => {
+                return offer.id === id;
+            });
+        } else {
+            index = offers.findIndex((offer) => {
+                return offer.uuid !== currentPeer;
+            });
+        }
         if (index == -1) {
             return null;
         }
