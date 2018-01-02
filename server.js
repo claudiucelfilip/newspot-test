@@ -6,8 +6,8 @@ var app = express();
 
 app.use(express.static('.'));
 const server = https.createServer({
-    key: fs.readFileSync('./key.pem'),
-    cert: fs.readFileSync('./cert.pem'),
+    key: fs.readFileSync('./key-localhost.pem'),
+    cert: fs.readFileSync('./cert-localhost.pem'),
     passphrase: 'lola'
 }, app);
 
@@ -38,7 +38,7 @@ wServer.on('connection', function(ws) {
                 break;
             case 'sendOffer':
                 offers.push(action.data);
-                console.log(offers.map(offer => offer.id));
+                console.log(offers.map(offer => offer.uuid));
                 broadcast({
                     type: 'newOffer',
                     data: {

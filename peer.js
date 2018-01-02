@@ -1,7 +1,8 @@
 class Connection {
-    constructor(target) {
+    constructor(type, target) {
         this.initConfig();
         this.target = target;
+        this.type = type;
         this.id = Math.floor(Math.random() * 100000);
         this.handlers = {};
 
@@ -47,11 +48,9 @@ class Connection {
     }
     onSendChannelOpen() {
         return new Promise((resolve) => {
-            this.sendChannel = this.connection.createDataChannel(`channel`);
+            this.sendChannel = this.connection.createDataChannel(`channel ${Math.random()}`);
 
-            window.onbeforeunload = () => {
-                this.sendChannel.close();
-            };
+
 
             this.sendChannel.onerror = (err) => {
                 console.log(err);
@@ -67,10 +66,13 @@ class Connection {
     onMessage(message) {
         let payload = JSON.parse(message.data);
 
-        console.log('received', message);
         (this.handlers[payload.type] || []).forEach((handler) => {
             handler(payload.data);
         });
+
+        if (payload.broadcast === true && payload.uuid !== this.uuid) {
+            this.sendChannel.send(message.data);
+        }
     }
     onReceiveChannelOpen() {
         return new Promise((resolve) => {
@@ -79,6 +81,7 @@ class Connection {
                 this.receiveChannel.onmessage = this.onMessage.bind(this);
 
                 window.onbeforeunload = () => {
+                    this.sendChannel.close();
                     this.receiveChannel.close();
                 };
 
@@ -117,11 +120,21 @@ class Connection {
         return this;
     }
 
-    send(message) {
-        if (typeof message !== 'string') {
-            message = JSON.stringify(message);
+    send(type, message, broadcast) {
+        let payload = {
+            type,
+            broadcast,
+            uuid: this.uuid,
+            data: message
+        };
+        if (typeof payload !== 'string') {
+            payload = JSON.stringify(payload);
         }
-        this.sendChannel.send(message);
+        this.sendChannel.send(payload);
+    }
+
+    broadcast(type, message) {
+        this.send(type, message, true);
     }
 
 }

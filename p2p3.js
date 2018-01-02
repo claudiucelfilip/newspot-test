@@ -1,22 +1,24 @@
-var socket = new Socket('wss://local:8080');
+var socket = new Socket('wss://localhost:8080');
 var Local = {};
 var Peer = {};
 
-Local.init = () => {
-    var uuid = Math.floor(Math.random() * 10000);
-    socket.send('peer', {
-        uuid
-    });
+Local.init = (socket) => Rx.Observable.create((observer) => {
+    socket.onopen = () => {
+        var uuid = Math.floor(Math.random() * 10000);
+        socket.send('peer', {
+            uuid
+        });
 
-    console.log('Local UUID', uuid);
-    return new Promise((resolve) => resolve({
-        uuid,
-        peerUuids: []
-    }));
-}
+        console.log('Local UUID', uuid);
+        observer.next({
+            uuid,
+            peerUuids: []
+        });
+    };
+});
 
 Peer.offer = (local) => {
-    let offer = new Connection();
+    let offer = new Connection('offer');
 
     return offer.connection
         .createOffer()
@@ -34,63 +36,68 @@ Peer.offer = (local) => {
                 desc,
                 ice,
                 id: offer.id
-
             });
-        })
-        .then(() => {
-            return new Promise((resolve, reject) => {
-                socket.once('answer', (answer) => {
-                    offer.uuid = answer.uuid;
-                    resolve({
-                        local,
-                        offer,
-                        answer
-                    });
-                });
 
-            });
+            return {
+                local,
+                offer
+            };
         });
 };
 
-Peer.ask = (local) => {
-    socket.send('requestOffer');
-
+Peer.wait = ({ local, offer }) => {
     return new Promise((resolve, reject) => {
-        let handleNewOffer = (offer) => {
-            if (local.peerUuids.indexOf(offer.uuid) === -1) {
-                socket.send('requestOffer', {
-                    id: offer.id
-                });
-            }
-        };
-
-        let handleOffer = (offer) => {
-            if (!offer || !offer.desc || offer.uuid === local.uuid || local.peerUuids.indexOf(offer.uuid) !== -1) {
-                return;
-            }
-
-            console.log('Got offer', offer);
-            socket.off('offer', handleOffer);
-            socket.off('newOffer', handleNewOffer);
-
-            local.peerUuids.push(offer.uuid);
+        socket.once('answer', (answer) => {
+            console.log('received answer', answer);
+            offer.uuid = answer.uuid;
             resolve({
                 local,
-                offer
+                offer,
+                answer
             });
-        };
+        });
 
-        socket.on('offer', handleOffer);
-        socket.on('newOffer', handleNewOffer);
     });
+}
+
+Peer.ask = (local) => {
+    let subject = new Rx.Subject();
+    socket.send('requestOffer');
+
+    let handleNewOffer = (offer) => {
+        console.log(local.peerUuids);
+        if (local.peerUuids.length < 3 && local.peerUuids.indexOf(offer.uuid) === -1) {
+            socket.send('requestOffer', {
+                id: offer.id
+            });
+        }
+    };
+
+    let handleOffer = (offer) => {
+        if (!offer || !offer.desc || offer.uuid === local.uuid || local.peerUuids.indexOf(offer.uuid) !== -1) {
+            return;
+        }
+
+        console.log('Got offer', offer);
+
+        local.peerUuids.push(offer.uuid);
+        subject.next({
+            local,
+            offer
+        });
+    };
+
+    socket.on('offer', handleOffer);
+    socket.on('newOffer', handleNewOffer);
+
+    return subject;
 };
 
 
 Peer.answer = ({ local, offer }) => {
-    let answer = new Connection();
-
+    let answer = new Connection('ask');
     answer.uuid = offer.uuid;
-    return answer.connection
+    let promise = answer.connection
         .setRemoteDescription(new RTCSessionDescription(offer.desc))
         .then(() => answer.connection.createAnswer())
         .then(desc => {
@@ -117,6 +124,8 @@ Peer.answer = ({ local, offer }) => {
             });
         })
         .then(() => answer.onOpen);
+
+    return Rx.Observable.fromPromise(promise);
 }
 
 Peer.connect = ({ local, offer, answer }) => {
@@ -145,42 +154,57 @@ Peer.setHandlers = (peer) => {
     return peer;
 }
 
-Peer.onClose = (peer) => {
-    return peer.onClose();
-}
+var local = Local.init(socket);
 
-socket.onopen = () => {
-    var local1 = Local.init()
-        .then((local) => {
-            var peer1 = createPeer(local);
+var peers = local.flatMap((local) => {
+    peers = createPairPeers(local);
 
-            peer1.broadcast('hello');
+
+    return peers;
+});
+
+
+peers.flatMap(peer => {
+        peer.on('text', (message) => {
+            console.log(message);
         });
-}
+        return Rx.Observable.timer(1000)
+            .map(() => peer);
+    })
+    .subscribe((peer) => {
+        peer.broadcast('text', `hello ${peer.type} from ${peer.uuid}`);
+    });
 
-function createPeer(local) {
-    setTimeout(() => {
-        var peer2 = createAsk(local);
-    }, 1000);
-    return createOffer(local);
+function createPairPeers(local) {
+    let peers = Rx.Observable
+        .merge(
+            Rx.Observable.from(createOffer(local)),
+            Rx.Observable.from(createAsk(local))
+        );
+    peers.subscribe(peer => {
+        peer.onClose()
+            .then(() => {
+                local.peerUuids = local.peerUuids
+                    .filter(uuid => uuid !== peer.uuid);
+            })
+    });
+    return peers;
 }
 
 function createOffer(local) {
-    return Peer
+    let peer = Peer
         .offer(local)
-        .then(Peer.connect)
-        .then(Peer.onClose)
-        .then(peer => {
-            return createOffer(local);
-        });
+        .then(Peer.wait)
+        .then(Peer.connect);
+
+    return peer;
 }
 
 function createAsk(local) {
-    return Peer
+    let count = 0;
+    let peer = Peer
         .ask(local)
-        .then(Peer.answer)
-        .then(Peer.onClose)
-        .then(peer => {
-            return createAsk(local);
-        });
+        .flatMap(Peer.answer);
+
+    return peer;
 }
