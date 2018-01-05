@@ -27,7 +27,7 @@ self.addEventListener('fetch', function(event) {
                 if (response) {
                     return response;
                 }
-                if (event.clientId && event.request.url === "https://placeimg.com/480/400/people") {
+                if (event.clientId && event.request.mode !== 'cors' && event.request.url === 'https://mdn.github.io/dom-examples/streams/simple-pump/tortoise.png') {
                     const client = await clients.get(event.clientId);
 
                     if (client) {
@@ -37,7 +37,7 @@ self.addEventListener('fetch', function(event) {
                             method: event.request.method
                         });
                         return getClientResponse(event.request.url).then((data) => {
-                            var init = { "status": 200, "statusText": "SuperSmashingGreat!" };
+                            var init = {headers: { "Content-Type" : "image/png" }};
                             var response = new Response(data.blob, init);
 
                             cache.put(data.url, response);
@@ -101,7 +101,7 @@ self.addEventListener('fetch', function(event) {
 
 
 self.addEventListener('activate', function(event) {
-    debugger;
+    console.log('SW Reactivated');
 });
 
 let handlers = [];

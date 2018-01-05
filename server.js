@@ -35,6 +35,7 @@ wServer.on('connection', function(ws) {
             case 'peer':
                 peers[action.data.uuid] = ws;
                 currentPeer = action.data.uuid;
+                console.log('New Peer', currentPeer, Object.keys(peers));
                 break;
             case 'sendOffer':
                 offers.push(action.data);
@@ -79,6 +80,7 @@ wServer.on('connection', function(ws) {
         offers = offers.filter((offer) => {
             return offer.uuid !== currentPeer;
         });
+        console.log('Peer Left', currentPeer, Object.keys(peers));
     });
 
     ws.on('error', (err) => {

@@ -1,4 +1,4 @@
-var socket = new Socket('wss://localhost:8080');
+var socket = new Socket('wss://local:8080');
 var Local = {};
 var Peer = {};
 
@@ -19,8 +19,8 @@ Local.init = (socket) => Rx.Observable.create((observer) => {
 
 Peer.offer = (local) => {
     let offer = new Connection('offer');
-
-    return offer.connection
+    
+    let promise = offer.connection
         .createOffer()
         .then(desc => {
             let promiseDesc = offer.connection
@@ -42,22 +42,48 @@ Peer.offer = (local) => {
                 local,
                 offer
             };
+        })
+        .catch((err) => {
+            console.log(err);
         });
+
+    return Rx.Observable.from(promise);
 };
 
 Peer.wait = ({ local, offer }) => {
-    return new Promise((resolve, reject) => {
-        socket.once('answer', (answer) => {
-            console.log('received answer', answer);
-            offer.uuid = answer.uuid;
-            resolve({
-                local,
-                offer,
-                answer
-            });
-        });
+    let subject = new Rx.Subject();
 
+    socket.once('answer', (answer) => {
+        console.log('received answer', answer);
+        offer.uuid = answer.uuid;
+        subject.next({
+            local,
+            offer,
+            answer
+        });
     });
+
+    return subject;
+}
+
+Peer.connect = ({ local, offer, answer }) => {
+    if (!answer.desc || answer.uuid === local.uuid) {
+        return;
+    }
+
+    let subject = new Rx.Subject();
+
+    local.peerUuids.push(answer.uuid);
+
+    offer.connection
+        .setRemoteDescription(new RTCSessionDescription(answer.desc))
+        .then(() => {
+            return offer.connection.addIceCandidate(new RTCIceCandidate(answer.ice))
+        })
+        .then(() => offer.onOpen)
+        .then(subject.next.bind(subject), subject.error.bind(subject));
+
+    return subject;
 }
 
 Peer.ask = (local) => {
@@ -96,6 +122,8 @@ Peer.ask = (local) => {
 
 Peer.answer = ({ local, offer }) => {
     let answer = new Connection('ask');
+    let subject = new Rx.Subject();
+
     answer.uuid = offer.uuid;
     let promise = answer.connection
         .setRemoteDescription(new RTCSessionDescription(offer.desc))
@@ -123,24 +151,10 @@ Peer.answer = ({ local, offer }) => {
                 answerId: answer.id
             });
         })
-        .then(() => answer.onOpen);
+        .then(() => answer.onOpen)
+        .then(subject.next.bind(subject), subject.error.bind(subject));
 
-    return Rx.Observable.fromPromise(promise);
-}
-
-Peer.connect = ({ local, offer, answer }) => {
-    if (!answer.desc || answer.uuid === local.uuid) {
-        return;
-    }
-
-    local.peerUuids.push(answer.uuid);
-
-    return offer.connection
-        .setRemoteDescription(new RTCSessionDescription(answer.desc))
-        .then(() => {
-            return offer.connection.addIceCandidate(new RTCIceCandidate(answer.ice))
-        })
-        .then(() => offer.onOpen);
+    return subject;
 }
 
 Peer.setHandlers = (peer) => {
@@ -154,48 +168,43 @@ Peer.setHandlers = (peer) => {
     return peer;
 }
 
-var local = Local.init(socket);
+let local = Local.init(socket);
+let peers = local.flatMap((local) => createPairPeers(local));
 
-var peers = local.flatMap((local) => {
-    peers = createPairPeers(local);
-
-
-    return peers;
-});
-
-
-peers.flatMap(peer => {
-        peer.on('text', (message) => {
-            console.log(message);
-        });
-        return Rx.Observable.timer(1000)
-            .map(() => peer);
-    })
-    .subscribe((peer) => {
-        peer.broadcast('text', `hello ${peer.type} from ${peer.uuid}`);
-    });
+// peers.flatMap(peer => {
+//         peer.on('text', (message) => {
+//             console.log(message);
+//         });
+//         return Rx.Observable.timer(1000)
+//             .map(() => peer);
+//     })
+//     .subscribe((peer) => {
+//         peer.broadcast('text', `hello ${peer.type} from ${peer.uuid}`);
+//     });
 
 function createPairPeers(local) {
     let peers = Rx.Observable
-        .merge(
-            Rx.Observable.from(createOffer(local)),
-            Rx.Observable.from(createAsk(local))
-        );
-    peers.subscribe(peer => {
-        peer.onClose()
-            .then(() => {
-                local.peerUuids = local.peerUuids
-                    .filter(uuid => uuid !== peer.uuid);
-            })
-    });
+        .zip(
+            createOffer(local),
+            createAsk(local)
+        )
+    // peers.subscribe(peers => {
+    //     peers.forEach(peer => {
+    //         peer.onClose()
+    //         .then(() => {
+    //             local.peerUuids = local.peerUuids
+    //                 .filter(uuid => uuid !== peer.uuid);
+    //         })
+    //     });
+    // });
     return peers;
 }
 
 function createOffer(local) {
     let peer = Peer
         .offer(local)
-        .then(Peer.wait)
-        .then(Peer.connect);
+        .flatMap(Peer.wait)
+        .flatMap(Peer.connect);
 
     return peer;
 }
