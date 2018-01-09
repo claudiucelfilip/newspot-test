@@ -41,7 +41,15 @@ peers.subscribe((peers) => {
         img.src = 'https://placeimg.com/1024/768/people';
         document.body.appendChild(img);
     }, 1000);
+
+    
 })
+setTimeout(() => {
+    let iframe = document.createElement('iframe');
+    iframe.src = '/page?url=http://adevarul.ro';
+    
+    document.body.appendChild(iframe);
+}, 3000);
 
 // peers.subscribe(([peer1, peer2]) => {
 //     navigator.serviceWorker.addEventListener('message', event => {

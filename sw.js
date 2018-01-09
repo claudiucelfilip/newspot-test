@@ -50,10 +50,12 @@ self.addEventListener('fetch', function(event) {
                     if (response.status === 404) {
                         return;
                     }
-                    try {
-                        cache.put(event.request.url, response.clone());
-                    } catch (e) {
-                        console.log(e);
+                    if (/^chrome-extension/.test(event.request.url) === false) {
+                        try {
+                            cache.put(event.request.url, response.clone());
+                        } catch (e) {
+                            console.log(e);
+                        }
                     }
 
                     return response;
