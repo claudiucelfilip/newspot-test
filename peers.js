@@ -87,8 +87,11 @@ Peers.connect = ([local, offer, answer]) => {
                 new RTCIceCandidate(answer.ice)
             );
         })
-        .then(() => offer.onOpen)
-        .then(subject.next.bind(subject), subject.error.bind(subject));
+        .then(() => {
+            offer.onOpen.subscribe(peer => {
+                subject.next(peer);
+            });
+        })
 
     return subject;
 };
@@ -147,8 +150,11 @@ Peers.answer = (local, offer) => {
                 answerId: answer.id
             });
         })
-        .then(() => answer.onOpen)
-        .then(subject.next.bind(subject), subject.error.bind(subject));
+        .then(() => {
+            answer.onOpen.subscribe(peer => {
+                subject.next(peer);
+            });
+        });
 
     return subject;
 };
@@ -163,8 +169,13 @@ Peers.create = $local => {
 
     let $latest = new Rx.Subject();
     $local.flatMap(local => createPairPeer(local, pool))
+        .catch(err => {
+            debugger;
+        })
         .subscribe(peer => {
             $latest.next(peer);
+        }, err => {
+            debugger;
         });
 
     let broadcast = (type, payload, target, uuids) => {
@@ -209,6 +220,9 @@ function createOffer(local, $pool) {
     return Rx.Observable
         .merge(Peers.offer(local), resend)
         .flatMap(Peers.wait)
+        .catch(err => {
+            debugger;
+        })
         .withLatestFrom($pool)
         .filter(([
                 [local, offer, answer], pool
@@ -216,12 +230,21 @@ function createOffer(local, $pool) {
             peerLimitFilter([answer, pool])
         )
         .map(([data, pool]) => data)
-        .flatMap(Peers.connect)
+        .flatMap((data) => {
+            debugger;
+            return Peers.connect(data);
+        })
         .do(peer => {
             peer.onClose.subscribe(() => {
-                resend.next(local);
+                Rx.Observable.timer(2000)
+                    .subscribe(() => {
+                        resend.next(local);
+                    });
             });
         })
+        .catch(err => {
+            console.error(err);
+        });
 }
 
 function createAsk(local, $pool) {
@@ -234,6 +257,8 @@ function createAsk(local, $pool) {
             local.socket.send('requestOffer', {
                 id: offer.id
             });
+        }, err => {
+            debugger;
         });
 
     return Peers.ask(local)
@@ -242,13 +267,9 @@ function createAsk(local, $pool) {
         .flatMap(([offer, pool]) => {
             return Peers.answer(local, offer);
         })
-        .do(peer => {
-            peer.onClose.subscribe(() => {
-                local.socket.send('requestOffer', {
-                    id: offer.id
-                });
-            });
-        })
+        .catch(err => {
+            debugger
+        });
 }
 
 const LIMIT = 3;
