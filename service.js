@@ -23,7 +23,7 @@ Rx.Observable
         peers.latest,
         service
     ).subscribe(([peer, service]) => {
-        addImages();
+        // addImages();
 
         globalPeer = peer;
         // serviceMessage('newPeer', peer.uuid);
@@ -36,7 +36,7 @@ Rx.Observable
         //     }, event.data.uuid);
         // });
 
-        // peer.onClose().then(() => {
+        // peer.onClose.subscribe(() => {
         //     serviceMessage('lostPeer', peer.uuid);
         // })
 

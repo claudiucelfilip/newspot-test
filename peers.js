@@ -167,12 +167,12 @@ Peers.create = $local => {
             $latest.next(peer);
         });
 
-    let broadcast = (type, payload, target, restricted) => {
-        peers.filter(peer => peer.uuid !== restricted ).forEach(peer => {
-            peer.broadcast(type, payload, target);
+    let broadcast = (type, payload, target, uuids) => {
+        peers.forEach(peer => {
+            peer.broadcast(type, payload, target, uuids);
         });
     };
-    
+
     let on = (type, handler) => {
         peers.forEach(peer => {
             peer.on(type, handler);
@@ -180,7 +180,7 @@ Peers.create = $local => {
     }
 
     $latest.subscribe(peer => {
-        peer.onClose().then(() => {
+        peer.onClose.subscribe((peer) => {
             $pool.next(removePeerAction(peer));
         });
 
@@ -203,22 +203,25 @@ function createPairPeer(local, $pool) {
 }
 
 function createOffer(local, $pool) {
-    return Peers.offer(local)
+    let resend = new Rx.Subject()
+        .flatMap(Peers.offer);
+
+    return Rx.Observable
+        .merge(Peers.offer(local), resend)
         .flatMap(Peers.wait)
         .withLatestFrom($pool)
-        .filter(([[local, offer, answer], pool]) =>
+        .filter(([
+                [local, offer, answer], pool
+            ]) =>
             peerLimitFilter([answer, pool])
         )
         .map(([data, pool]) => data)
-        .flatMap(Peers.connect);
-}
-
-const LIMIT = 5;
-function peerLimitFilter([offer, peers]) {
-    return (
-        peers.length < LIMIT &&
-        peers.findIndex(peer => peer.uuid === offer.uuid) === -1
-    );
+        .flatMap(Peers.connect)
+        .do(peer => {
+            peer.onClose.subscribe(() => {
+                resend.next(local);
+            });
+        })
 }
 
 function createAsk(local, $pool) {
@@ -238,5 +241,21 @@ function createAsk(local, $pool) {
         .filter(peerLimitFilter)
         .flatMap(([offer, pool]) => {
             return Peers.answer(local, offer);
-        });
+        })
+        .do(peer => {
+            peer.onClose.subscribe(() => {
+                local.socket.send('requestOffer', {
+                    id: offer.id
+                });
+            });
+        })
+}
+
+const LIMIT = 3;
+
+function peerLimitFilter([offer, peers]) {
+    return (
+        peers.length < LIMIT &&
+        peers.findIndex(peer => peer.uuid === offer.uuid) === -1
+    );
 }

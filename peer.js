@@ -15,7 +15,7 @@ class Connection {
             return this;
         });
 
-        this.onClose = this.onChannelClose;
+        this.onClose = this.onChannelClose();
     }
 
     initConfig() {
@@ -41,15 +41,15 @@ class Connection {
     }
 
     onChannelClose() {
-        return new Promise(resolve => {
-            this.sendChannel.onclose = () => {
-                console.log(
-                    'send datachannel closed',
-                    this.sendChannel.readyState
-                );
-                resolve(this);
-            };
-        });
+        let subject = new Rx.Subject();
+        this.sendChannel.onclose = () => {
+            console.log(
+                'send datachannel closed',
+                this.sendChannel.readyState
+            );
+            subject.next(this);
+        };
+        return subject;
     }
     onSendChannelOpen() {
         return new Promise(resolve => {
@@ -138,16 +138,17 @@ class Connection {
         return this;
     }
 
-    send(type, data, target, broadcast) {
+    send(type, data, target, uuids, broadcast) {
         let payload = {
             type,
             broadcast,
             target,
             sourceUuid: this.localUuid,
             nextUuid: this.uuid,
+            uuids: [...(uuids || []), this.localUuid],
             data
         };
-        console.log('Sending', payload);
+        console.log('Sending', payload.uuids);
         if (type === 'response') {
             return this.sendChannel.send(data.blob);
         }
@@ -159,7 +160,7 @@ class Connection {
         }
     }
 
-    broadcast(type, data, target) {
-        this.send(type, data, target, true);
+    broadcast(type, data, target, uuids) {
+        this.send(type, data, target, uuids, true);
     }
 }
