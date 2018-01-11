@@ -1,35 +1,78 @@
+var Service = {};
 
-peers.subscribe((peers) => {
-    console.log('Peers opened', peers);
-    let url;
-    navigator.serviceWorker.addEventListener('message', event => {
-        console.log('!!! Message', event);
-
-        url = event.data.url;
-        peers[0].send('request', {
-            url
-        }); 
+Service.init = () => {
+    let subject = new Rx.Subject();
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+            .then(service => {
+                console.log('ServiceWorker registration successfull');
+                subject.next(service);
+            }, err => {
+                console.log('ServiceWorker registration failed', err);
+                subject.error(err);
+            });
     });
+    return subject;
+}
 
-    peers.forEach(peer => {
+var service = Service.init();
+var globalPeer;
+
+Rx.Observable
+    .zip(
+        peers,
+        service
+    ).subscribe(([peer, service]) => {
+        addImages();
+        globalPeer = peer;
+        serviceMessage('newPeer', peer.uuid);
+        navigator.serviceWorker.addEventListener('message', event => {
+            console.log('!!! Message', event);
+
+            url = event.data.url;
+            peer.broadcast('request', {
+                url
+            }, event.data.uuid);
+        });
+
+        peer.onClose().then(() => {
+            serviceMessage('lostPeer', peer.uuid);
+        })
+
+        peer.on('ping', (payload) => {
+            if (payload.target && payload.target === this.localUuid) {}
+            console.log('PING', message);
+        });
         peer.on('request', (request) => {
-            fetch(request.url, {mode: 'cors'})
-                .then(response =>  response.arrayBuffer())
+            let headers = new Headers();
+            headers.append('X-Peer-Fetch', 'true');
+            fetch(request.url, { headers })
+                .then(response => response.arrayBuffer())
                 .then(blob => {
                     peer.send('response', {
                         blob
                     });
                 });
         });
+
         peer.on('response', (data) => {
             console.log('response', data);
-            navigator.serviceWorker.controller.postMessage({
+            serviceMessage('response', {
                 url,
                 blob: new Blob([new Uint8Array(data)])
             });
-        }); 
+        });
+
     });
 
+function serviceMessage(type, data) {
+    navigator.serviceWorker.controller.postMessage({
+        type,
+        data
+    });
+}
+
+function addImages() {
     setTimeout(() => {
         let img = document.createElement('img');
         img.src = 'https://mdn.github.io/dom-examples/streams/simple-pump/tortoise.png';
@@ -41,45 +84,4 @@ peers.subscribe((peers) => {
         img.src = 'https://placeimg.com/1024/768/people';
         document.body.appendChild(img);
     }, 1000);
-
-    
-})
-setTimeout(() => {
-    let iframe = document.createElement('iframe');
-    iframe.src = '/page?url=http://adevarul.ro';
-    
-    document.body.appendChild(iframe);
-}, 3000);
-
-// peers.subscribe(([peer1, peer2]) => {
-//     navigator.serviceWorker.addEventListener('message', event => {
-//         console.log('!!! Message', event);
-//         var blob = new Blob();
-
-//         console.log('request', event.data);
-//         peer2.send('request', {
-//             url: event.data.url
-//         });
-
-//         peer1.on('request', (request) => {
-//         
-//         })
-
-//         peer2.on('response', (response) => {
-//             console.log('response', response);
-
-//             navigator.serviceWorker.controller.postMessage({
-//                 url: event.data.url,
-//                 blob
-//             });
-//         });
-//     });
-// });
-window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js')
-        .then(() => {
-            console.log('ServiceWorker registration successfull');
-        }, (err) => {
-            console.log('ServiceWorker registration failed', err);
-        });
-});
+}

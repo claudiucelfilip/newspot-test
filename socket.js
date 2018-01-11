@@ -2,16 +2,16 @@ class Socket extends WebSocket {
     constructor(url) {
         super(url);
         this.handlers = {};
-        this.onmessage = this.onMessage.bind(this);
+        this.onmessage = (message) => {
+            let payload = JSON.parse(message.data);
+
+            (this.handlers[payload.type] || []).forEach((handler) => {
+                handler(payload.data);
+            });
+        }
     }
 
-    onMessage(message) {
-        let payload = JSON.parse(message.data);
 
-        (this.handlers[payload.type] || []).forEach((handler) => {
-            handler(payload.data);
-        });
-    }
 
     on(type, handler) {
         this.handlers[type] = this.handlers[type] || [];

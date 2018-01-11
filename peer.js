@@ -1,7 +1,7 @@
 class Connection {
-    constructor(type, target) {
+    constructor(type, localUuid) {
         this.initConfig();
-        this.target = target;
+        this.localUuid = localUuid;
         this.type = type;
         this.id = Math.floor(Math.random() * 100000);
         this.handlers = {};
@@ -11,8 +11,7 @@ class Connection {
         this.onOpen = Promise.all([
             this.onSendChannelOpen(),
             this.onReceiveChannelOpen()
-        ]).then(() => {
-            console.log('OnOpen triggered');
+        ]).then(([sendChannel, receiveChannel]) => {
             return this;
         });
 
@@ -106,6 +105,7 @@ class Connection {
                         'receive datachannel opened',
                         this.receiveChannel.readyState
                     );
+                    resolve(this.receiveChannel);
                 };
 
                 this.receiveChannel.onclose = () => {
@@ -115,8 +115,6 @@ class Connection {
                     );
                     this.sendChannel.close();
                 };
-
-                resolve(this.receiveChannel);
             };
         });
     }
@@ -144,16 +142,17 @@ class Connection {
         return this;
     }
 
-    send(type, message, broadcast) {
+    send(type, data, target, broadcast) {
         let payload = {
             type,
             broadcast,
+            target,
             uuid: this.uuid,
-            data: message
+            data
         };
         console.log('Sending', payload);
         if (type === 'response') {
-            return this.sendChannel.send(message.blob);
+            return this.sendChannel.send(data.blob);
         }
         if (typeof payload !== 'string') {
             payload = JSON.stringify(payload);
@@ -161,7 +160,7 @@ class Connection {
         this.sendChannel.send(payload);
     }
 
-    broadcast(type, message) {
-        this.send(type, message, true);
+    broadcast(type, data, target) {
+        this.send(type, data, target, true);
     }
 }

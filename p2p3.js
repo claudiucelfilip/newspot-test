@@ -2,7 +2,8 @@ var socket = new Socket('wss://local:8080');
 var Local = {};
 var Peer = {};
 
-Local.init = (socket) => Rx.Observable.create((observer) => {
+Local.init = (socket) => {
+    let subject = new Rx.Subject();
     socket.onopen = () => {
         var uuid = Math.floor(Math.random() * 10000);
         socket.send('peer', {
@@ -10,16 +11,19 @@ Local.init = (socket) => Rx.Observable.create((observer) => {
         });
 
         console.log('Local UUID', uuid);
-        observer.next({
+        subject.next({
             uuid,
             peerUuids: []
         });
     };
-});
+
+    return subject;
+};
 
 Peer.offer = (local) => {
-    let offer = new Connection('offer');
-    
+    let subject = new Rx.Subject();
+    let offer = new Connection('offer', local.uuid);
+
     let promise = offer.connection
         .createOffer()
         .then(desc => {
@@ -38,16 +42,17 @@ Peer.offer = (local) => {
                 id: offer.id
             });
 
-            return {
+            subject.next({
                 local,
                 offer
-            };
+            });
         })
         .catch((err) => {
             console.log(err);
+            subject.error(err);
         });
 
-    return Rx.Observable.from(promise);
+    return subject;
 };
 
 Peer.wait = ({ local, offer }) => {
@@ -91,7 +96,6 @@ Peer.ask = (local) => {
     socket.send('requestOffer');
 
     let handleNewOffer = (offer) => {
-        console.log(local.peerUuids);
         if (local.peerUuids.length < 3 && local.peerUuids.indexOf(offer.uuid) === -1) {
             socket.send('requestOffer', {
                 id: offer.id
@@ -119,9 +123,8 @@ Peer.ask = (local) => {
     return subject;
 };
 
-
 Peer.answer = ({ local, offer }) => {
-    let answer = new Connection('ask');
+    let answer = new Connection('ask', local.uuid);
     let subject = new Rx.Subject();
 
     answer.uuid = offer.uuid;
@@ -157,63 +160,42 @@ Peer.answer = ({ local, offer }) => {
     return subject;
 }
 
-Peer.setHandlers = (peer) => {
-    peer.on('message', (message) => {
-        console.log('got RTC message', message);
-        let p = document.createElement('li');
-        p.innerHTML = message;
-        document.getElementById('messages').appendChild(p);
-    });
+let peers = new Rx.Subject();
+let local = Local.init(socket)
+    .flatMap(createPairPeers)
+    .subscribe(subscribePeers(peers))
 
-    return peer;
+
+function subscribePeers(peersSubject) {
+    return peersSubject.next.bind(peersSubject);
 }
 
-let local = Local.init(socket);
-let peers = local.flatMap((local) => createPairPeers(local));
-
-// peers.flatMap(peer => {
-//         peer.on('text', (message) => {
-//             console.log(message);
-//         });
-//         return Rx.Observable.timer(1000)
-//             .map(() => peer);
-//     })
-//     .subscribe((peer) => {
-//         peer.broadcast('text', `hello ${peer.type} from ${peer.uuid}`);
-//     });
-
 function createPairPeers(local) {
-    let peers = Rx.Observable
-        .zip(
+    return Rx.Observable
+        .merge(
             createOffer(local),
             createAsk(local)
-        )
-    // peers.subscribe(peers => {
-    //     peers.forEach(peer => {
-    //         peer.onClose()
-    //         .then(() => {
-    //             local.peerUuids = local.peerUuids
-    //                 .filter(uuid => uuid !== peer.uuid);
-    //         })
-    //     });
-    // });
-    return peers;
+        ).do(peer => {
+            console.log('Currently connected to', local.peerUuids);
+            peer.onClose()
+                .then(() => {
+                    console.log('Lost', peer.uuid);
+                    local.peerUuids = local.peerUuids
+                        .filter(uuid => uuid !== peer.uuid);
+                });
+        });
 }
 
 function createOffer(local) {
-    let peer = Peer
+    return Peer
         .offer(local)
         .flatMap(Peer.wait)
         .flatMap(Peer.connect);
-
-    return peer;
 }
 
 function createAsk(local) {
     let count = 0;
-    let peer = Peer
+    return Peer
         .ask(local)
         .flatMap(Peer.answer);
-
-    return peer;
 }

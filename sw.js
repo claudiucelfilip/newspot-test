@@ -1,5 +1,12 @@
+let peerUuids = [];
 self.addEventListener('install', (event) => {
+    addMessageHandler('newPeer', (uuid) => {
+        peerUuids.push(uuid);
+    });
 
+    addMessageHandler('lostPeer', (lostUuid) => {
+        peerUuids.filter(uuid => uuid !== lostUuid);
+    });
 });
 
 function getHeaders(entries) {
@@ -10,16 +17,16 @@ function getHeaders(entries) {
     return headers;
 }
 
-function getClientResponse(url) {
+function getResponse(url) {
     return new Promise((resolve) => {
-        addHandler(function(data) {
-
-            if (data.url == url) {
+        addMessageHandler('response', data => {
+            if (data.url === url) {
                 resolve(data);
             }
         });
     });
 }
+
 self.addEventListener('fetch', function(event) {
     event.respondWith(
         caches.open('v1').then(function(cache) {
@@ -27,7 +34,8 @@ self.addEventListener('fetch', function(event) {
                 if (response) {
                     return response;
                 }
-                if (event.clientId && event.request.mode !== 'cors' && event.request.url === 'https://mdn.github.io/dom-examples/streams/simple-pump/tortoise.png') {
+                console.log(event.request.url);
+                if (false && event.clientId && peerUuids.length) {
                     const client = await clients.get(event.clientId);
 
                     if (client) {
@@ -36,15 +44,14 @@ self.addEventListener('fetch', function(event) {
                             headers: getHeaders(event.request.headers.entries()),
                             method: event.request.method
                         });
-                        return getClientResponse(event.request.url).then((data) => {
-                            var init = {headers: { "Content-Type" : "image/png" }};
-                            var response = new Response(data.blob, init);
 
-                            cache.put(data.url, response);
-                            return response;
-                        });
+                        let data = await getResponse(event.request.url);
+                        var init = { headers: { "Content-Type": "image/png" } };
+                        var response = new Response(data.blob, init);
+
+                        cache.put(data.url, response);
+                        return response;
                     }
-
                 }
                 return fetch(event.request).then(function(response) {
                     if (response.status === 404) {
@@ -52,7 +59,7 @@ self.addEventListener('fetch', function(event) {
                     }
                     if (/^chrome-extension/.test(event.request.url) === false) {
                         try {
-                            cache.put(event.request.url, response.clone());
+                            // cache.put(event.request.url, response.clone());
                         } catch (e) {
                             console.log(e);
                         }
@@ -60,9 +67,6 @@ self.addEventListener('fetch', function(event) {
 
                     return response;
                 });
-
-
-
             }).catch(function(err) {
                 // If both fail, show a generic fallback:
                 // return caches.match('/offline.html');
@@ -70,49 +74,21 @@ self.addEventListener('fetch', function(event) {
             })
         })
     );
-    // event.respondWith(async function() {
-    //     // console.log(event.request);
-    //     // debugger;
-    //     let request = event.request.clone();
-
-    //     request.headers = new Headers({
-    //         'Content-Type': 'application/json'
-    //     });
-
-    //     const responseDefault = await fetch(request).then((response) => {
-    //         debugger;
-    //         return response;
-    //     }, (err) => {
-    //         debugger;
-    //     });
-
-    //     if (!event.clientId) return responseDefault;
-    //     const client = await clients.get(event.clientId);
-
-    //     if (!client) return responseDefault;
-
-    //     // Send a message to the client.
-    //     client.postMessage({
-    //         url: event.request.url
-    //     });
-    //     const response = await fetch('https://static.pexels.com/photos/34950/pexels-photo.jpg');
-
-    //     return response;
-    // }());
 });
-
 
 self.addEventListener('activate', function(event) {
     console.log('SW Reactivated');
 });
 
-let handlers = [];
+let handlers = {};
 
-function addHandler(fn) {
-    handlers.push(fn);
+function addMessageHandler(type, fn) {
+    handlers[type] = handlers[type] || [];
+    handlers[type].push(fn);
 }
 self.addEventListener('message', function(event) {
-    var data = event.data;
+    var message = event.data;
+    var handlerType = handlers[message.type] || [];
 
-    handlers.forEach(handler => handler(data));
+    handlerType.forEach(handler => handler(message.data));
 });
