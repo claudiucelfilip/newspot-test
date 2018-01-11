@@ -26,43 +26,39 @@ Rx.Observable
         addImages();
 
         globalPeer = peer;
-        serviceMessage('newPeer', peer.uuid);
-        navigator.serviceWorker.addEventListener('message', event => {
-            console.log('!!! Message', event);
+        // serviceMessage('newPeer', peer.uuid);
+        // navigator.serviceWorker.addEventListener('message', event => {
+        //     console.log('!!! Message', event);
 
-            url = event.data.url;
-            peer.broadcast('request', {
-                url
-            }, event.data.uuid);
-        });
+        //     url = event.data.url;
+        //     peer.broadcast('request', {
+        //         url
+        //     }, event.data.uuid);
+        // });
 
-        peer.onClose().then(() => {
-            serviceMessage('lostPeer', peer.uuid);
-        })
+        // peer.onClose().then(() => {
+        //     serviceMessage('lostPeer', peer.uuid);
+        // })
 
-        peer.on('ping', (payload) => {
-            if (payload.target && payload.target === this.localUuid) {}
-            console.log('PING', message);
-        });
-        peer.on('request', (request) => {
-            let headers = new Headers();
-            headers.append('X-Peer-Fetch', 'true');
-            fetch(request.url, { headers })
-                .then(response => response.arrayBuffer())
-                .then(blob => {
-                    peer.send('response', {
-                        blob
-                    });
-                });
-        });
+        // peer.on('request', (request) => {
+        //     let headers = new Headers();
+        //     headers.append('X-Peer-Fetch', 'true');
+        //     fetch(request.url, { headers })
+        //         .then(response => response.arrayBuffer())
+        //         .then(blob => {
+        //             peer.send('response', {
+        //                 blob
+        //             });
+        //         });
+        // });
 
-        peer.on('response', (data) => {
-            console.log('response', data);
-            serviceMessage('response', {
-                url,
-                blob: new Blob([new Uint8Array(data)])
-            });
-        });
+        // peer.on('response', (data) => {
+        //     console.log('response', data);
+        //     serviceMessage('response', {
+        //         url,
+        //         blob: new Blob([new Uint8Array(data)])
+        //     });
+        // });
 
     });
 

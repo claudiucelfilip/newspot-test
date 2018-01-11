@@ -34,7 +34,7 @@ self.addEventListener('fetch', function(event) {
                 if (response) {
                     return response;
                 }
-                console.log(event.request.url);
+
                 if (false && event.clientId && peerUuids.length) {
                     const client = await clients.get(event.clientId);
 

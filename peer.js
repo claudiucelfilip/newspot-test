@@ -80,14 +80,10 @@ class Connection {
         }
         let type = payload.type || 'response';
 
-        console.log('onMessage', this, message);
-        (this.handlers[type] || []).forEach(handler => {
-            handler(payload.data || payload);
-        });
 
-        if (payload.broadcast === true && payload.uuid !== this.uuid) {
-            this.sendChannel.send(message.data);
-        }
+        (this.handlers[type] || []).forEach(handler => {
+            handler(payload);
+        });
     }
     onReceiveChannelOpen() {
         return new Promise(resolve => {
@@ -147,7 +143,8 @@ class Connection {
             type,
             broadcast,
             target,
-            uuid: this.uuid,
+            sourceUuid: this.localUuid,
+            nextUuid: this.uuid,
             data
         };
         console.log('Sending', payload);
@@ -157,7 +154,9 @@ class Connection {
         if (typeof payload !== 'string') {
             payload = JSON.stringify(payload);
         }
-        this.sendChannel.send(payload);
+        if (this.sendChannel.readyState === 'open') {
+            this.sendChannel.send(payload);
+        }
     }
 
     broadcast(type, data, target) {
