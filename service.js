@@ -20,10 +20,11 @@ var globalPeer;
 
 Rx.Observable
     .zip(
-        peers,
+        peers.latest,
         service
     ).subscribe(([peer, service]) => {
         addImages();
+
         globalPeer = peer;
         serviceMessage('newPeer', peer.uuid);
         navigator.serviceWorker.addEventListener('message', event => {
