@@ -34,14 +34,6 @@ peers.latest.withLatestFrom(local).subscribe(([peer, localInfo]) => {
         console.log('Receiving', payload.uuids);
         peers.broadcast('ping', payload.data, null, payload.uuids);
 
-        base64ToBlob(payload.data.data, (blob) => {
-            let url = URL.createObjectURL(blob);
-            let img = document.createElement('img');
-            img.src = url;
-            document.body.appendChild(img);
-        });
-
-
     });
 });
 peers.pool
@@ -49,13 +41,13 @@ peers.pool
         console.log('PEERs', items.map(peer => peer.uuid));
     });
 
-Rx.Observable.zip(
-        peers.pool.filter(items => items.length).first(),
-        getImage()
-    )
-    .subscribe(([peer, data]) => {
-        peers.broadcast('ping', data);
-    });
+// Rx.Observable.zip(
+//         peers.pool.filter(items => items.length).first(),
+//         getImage()
+//     )
+//     .subscribe(([peer, data]) => {
+//         peers.broadcast('ping', data);
+//     });
 
 var base64ToBlob = function(base64, cb) {
     var binary = atob(base64);

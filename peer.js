@@ -80,7 +80,7 @@ class Connection {
         }
         let type = payload.type || 'response';
 
-
+        // console.log('received', payload, this.handlers);
         (this.handlers[type] || []).forEach(handler => {
             handler(payload);
         });

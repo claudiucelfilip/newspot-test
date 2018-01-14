@@ -169,13 +169,10 @@ Peers.create = $local => {
 
     let $latest = new Rx.Subject();
     $local.flatMap(local => createPairPeer(local, pool))
-        .catch(err => {
-            debugger;
-        })
         .subscribe(peer => {
             $latest.next(peer);
         }, err => {
-            debugger;
+            console.error(err);
         });
 
     let broadcast = (type, payload, target, uuids) => {
@@ -220,9 +217,6 @@ function createOffer(local, $pool) {
     return Rx.Observable
         .merge(Peers.offer(local), resend)
         .flatMap(Peers.wait)
-        .catch(err => {
-            debugger;
-        })
         .withLatestFrom($pool)
         .filter(([
                 [local, offer, answer], pool
@@ -231,7 +225,6 @@ function createOffer(local, $pool) {
         )
         .map(([data, pool]) => data)
         .flatMap((data) => {
-            debugger;
             return Peers.connect(data);
         })
         .do(peer => {
@@ -258,7 +251,7 @@ function createAsk(local, $pool) {
                 id: offer.id
             });
         }, err => {
-            debugger;
+            console.error(err);
         });
 
     return Peers.ask(local)
@@ -268,7 +261,7 @@ function createAsk(local, $pool) {
             return Peers.answer(local, offer);
         })
         .catch(err => {
-            debugger
+            console.error(err);
         });
 }
 
