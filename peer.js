@@ -8,14 +8,14 @@ class Connection {
 
         this.connection = new RTCPeerConnection(this.config);
 
-        this.onOpen = Promise.all([
+        this.onOpen = Rx.Observable.zip(
             this.onSendChannelOpen(),
             this.onReceiveChannelOpen()
-        ]).then(([sendChannel, receiveChannel]) => {
+        ).map(([sendChannel, receiveChannel]) => {
             return this;
         });
 
-        this.onClose = this.onChannelClose;
+        this.onClose = this.onChannelClose();
     }
 
     initConfig() {
@@ -41,34 +41,34 @@ class Connection {
     }
 
     onChannelClose() {
-        return new Promise(resolve => {
-            this.sendChannel.onclose = () => {
-                console.log(
-                    'send datachannel closed',
-                    this.sendChannel.readyState
-                );
-                resolve(this);
-            };
-        });
+        let subject = new Rx.Subject();
+        this.sendChannel.onclose = () => {
+            console.log(
+                'send datachannel closed',
+                this.sendChannel.readyState
+            );
+            subject.next(this);
+        };
+        return subject;
     }
     onSendChannelOpen() {
-        return new Promise(resolve => {
-            this.sendChannel = this.connection.createDataChannel(
-                `channel ${Math.random()}`
+        let subject = new Rx.Subject();
+        this.sendChannel = this.connection.createDataChannel(
+            `channel ${Math.random()}`
+        );
+
+        this.sendChannel.onerror = err => {
+            console.log(err);
+        };
+
+        this.sendChannel.onopen = () => {
+            console.log(
+                'send datachannel opened',
+                this.sendChannel.readyState
             );
-
-            this.sendChannel.onerror = err => {
-                console.log(err);
-            };
-
-            this.sendChannel.onopen = () => {
-                console.log(
-                    'send datachannel opened',
-                    this.sendChannel.readyState
-                );
-                resolve(this.sendChannel);
-            };
-        });
+            subject.next(this.sendChannel);
+        };
+        return subject;
     }
 
     onMessage(message) {
@@ -80,39 +80,39 @@ class Connection {
         }
         let type = payload.type || 'response';
 
-
+        // console.log('received', payload, this.handlers);
         (this.handlers[type] || []).forEach(handler => {
             handler(payload);
         });
     }
     onReceiveChannelOpen() {
-        return new Promise(resolve => {
-            this.connection.ondatachannel = event => {
-                this.receiveChannel = event.channel;
-                this.receiveChannel.onmessage = this.onMessage.bind(this);
+        let subject = new Rx.Subject();
+        this.connection.ondatachannel = event => {
+            this.receiveChannel = event.channel;
+            this.receiveChannel.onmessage = this.onMessage.bind(this);
 
-                window.onbeforeunload = () => {
-                    this.sendChannel.close();
-                    this.receiveChannel.close();
-                };
-
-                this.receiveChannel.onopen = () => {
-                    console.log(
-                        'receive datachannel opened',
-                        this.receiveChannel.readyState
-                    );
-                    resolve(this.receiveChannel);
-                };
-
-                this.receiveChannel.onclose = () => {
-                    console.log(
-                        'receive datachannel closed',
-                        this.receiveChannel.readyState
-                    );
-                    this.sendChannel.close();
-                };
+            window.onbeforeunload = () => {
+                this.sendChannel.close();
+                this.receiveChannel.close();
             };
-        });
+
+            this.receiveChannel.onopen = () => {
+                console.log(
+                    'receive datachannel opened',
+                    this.receiveChannel.readyState
+                );
+                subject.next(this.receiveChannel);
+            };
+
+            this.receiveChannel.onclose = () => {
+                console.log(
+                    'receive datachannel closed',
+                    this.receiveChannel.readyState
+                );
+                this.sendChannel.close();
+            };
+        };
+        return subject
     }
 
     on(type, handler) {
@@ -138,16 +138,17 @@ class Connection {
         return this;
     }
 
-    send(type, data, target, broadcast) {
+    send(type, data, target, uuids, broadcast) {
         let payload = {
             type,
             broadcast,
             target,
             sourceUuid: this.localUuid,
             nextUuid: this.uuid,
+            uuids: [...(uuids || []), this.localUuid],
             data
         };
-        console.log('Sending', payload);
+        console.log('Sending', payload.uuids);
         if (type === 'response') {
             return this.sendChannel.send(data.blob);
         }
@@ -159,7 +160,7 @@ class Connection {
         }
     }
 
-    broadcast(type, data, target) {
-        this.send(type, data, target, true);
+    broadcast(type, data, target, uuids) {
+        this.send(type, data, target, uuids, true);
     }
 }

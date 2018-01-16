@@ -87,8 +87,11 @@ Peers.connect = ([local, offer, answer]) => {
                 new RTCIceCandidate(answer.ice)
             );
         })
-        .then(() => offer.onOpen)
-        .then(subject.next.bind(subject), subject.error.bind(subject));
+        .then(() => {
+            offer.onOpen.subscribe(peer => {
+                subject.next(peer);
+            });
+        })
 
     return subject;
 };
@@ -147,8 +150,11 @@ Peers.answer = (local, offer) => {
                 answerId: answer.id
             });
         })
-        .then(() => answer.onOpen)
-        .then(subject.next.bind(subject), subject.error.bind(subject));
+        .then(() => {
+            answer.onOpen.subscribe(peer => {
+                subject.next(peer);
+            });
+        });
 
     return subject;
 };
@@ -165,14 +171,16 @@ Peers.create = $local => {
     $local.flatMap(local => createPairPeer(local, pool))
         .subscribe(peer => {
             $latest.next(peer);
+        }, err => {
+            console.error(err);
         });
 
-    let broadcast = (type, payload, target, restricted) => {
-        peers.filter(peer => peer.uuid !== restricted ).forEach(peer => {
-            peer.broadcast(type, payload, target);
+    let broadcast = (type, payload, target, uuids) => {
+        peers.forEach(peer => {
+            peer.broadcast(type, payload, target, uuids);
         });
     };
-    
+
     let on = (type, handler) => {
         peers.forEach(peer => {
             peer.on(type, handler);
@@ -180,7 +188,7 @@ Peers.create = $local => {
     }
 
     $latest.subscribe(peer => {
-        peer.onClose().then(() => {
+        peer.onClose.subscribe((peer) => {
             $pool.next(removePeerAction(peer));
         });
 
@@ -203,22 +211,33 @@ function createPairPeer(local, $pool) {
 }
 
 function createOffer(local, $pool) {
-    return Peers.offer(local)
+    let resend = new Rx.Subject()
+        .flatMap(Peers.offer);
+
+    return Rx.Observable
+        .merge(Peers.offer(local), resend)
         .flatMap(Peers.wait)
         .withLatestFrom($pool)
-        .filter(([[local, offer, answer], pool]) =>
+        .filter(([
+                [local, offer, answer], pool
+            ]) =>
             peerLimitFilter([answer, pool])
         )
         .map(([data, pool]) => data)
-        .flatMap(Peers.connect);
-}
-
-const LIMIT = 5;
-function peerLimitFilter([offer, peers]) {
-    return (
-        peers.length < LIMIT &&
-        peers.findIndex(peer => peer.uuid === offer.uuid) === -1
-    );
+        .flatMap((data) => {
+            return Peers.connect(data);
+        })
+        .do(peer => {
+            peer.onClose.subscribe(() => {
+                Rx.Observable.timer(2000)
+                    .subscribe(() => {
+                        resend.next(local);
+                    });
+            });
+        })
+        .catch(err => {
+            console.error(err);
+        });
 }
 
 function createAsk(local, $pool) {
@@ -231,6 +250,8 @@ function createAsk(local, $pool) {
             local.socket.send('requestOffer', {
                 id: offer.id
             });
+        }, err => {
+            console.error(err);
         });
 
     return Peers.ask(local)
@@ -238,5 +259,17 @@ function createAsk(local, $pool) {
         .filter(peerLimitFilter)
         .flatMap(([offer, pool]) => {
             return Peers.answer(local, offer);
+        })
+        .catch(err => {
+            console.error(err);
         });
+}
+
+const LIMIT = 3;
+
+function peerLimitFilter([offer, peers]) {
+    return (
+        peers.length < LIMIT &&
+        peers.findIndex(peer => peer.uuid === offer.uuid) === -1
+    );
 }

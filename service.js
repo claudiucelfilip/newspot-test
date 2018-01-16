@@ -16,29 +16,32 @@ Service.init = () => {
 }
 
 var service = Service.init();
-var globalPeer;
-
-Rx.Observable
-    .zip(
-        peers.latest,
-        service
-    ).subscribe(([peer, service]) => {
+service
+    .subscribe(() => {
         addImages();
+        navigator.serviceWorker.addEventListener('message', event => {
+            let message = event.data;
+            peers.broadcast(message.type, message);
+        });
+    });
 
-        globalPeer = peer;
+peers.latest
+    .withLatestFrom(service)
+    .subscribe(([peer, service]) => {
         // serviceMessage('newPeer', peer.uuid);
-        // navigator.serviceWorker.addEventListener('message', event => {
-        //     console.log('!!! Message', event);
 
-        //     url = event.data.url;
-        //     peer.broadcast('request', {
-        //         url
-        //     }, event.data.uuid);
-        // });
+        peer.on('fetched', (message) => {
+            const data = message.data;
+            console.log('RESPONSE', data);
+            serviceMessage('fetchedResponse', data);
+        });
 
-        // peer.onClose().then(() => {
-        //     serviceMessage('lostPeer', peer.uuid);
-        // })
+        var responses = {};
+        peer.on('chunk', (message) => {
+            const data = message.data;
+            console.log('RESPONSE', data);
+            serviceMessage('chunkResponse', data);
+        });
 
         // peer.on('request', (request) => {
         //     let headers = new Headers();
@@ -72,13 +75,33 @@ function serviceMessage(type, data) {
 function addImages() {
     setTimeout(() => {
         let img = document.createElement('img');
-        img.src = 'https://mdn.github.io/dom-examples/streams/simple-pump/tortoise.png';
+        img.src = '/tortoise.png';
         document.body.appendChild(img);
-    }, 1000);
+    }, 4000);
 
     setTimeout(() => {
         let img = document.createElement('img');
-        img.src = 'https://placeimg.com/1024/768/people';
+        img.src = '/image.svg';
         document.body.appendChild(img);
-    }, 1000);
+    }, 4000);
+
+
+    setTimeout(() => {
+        let img = document.createElement('img');
+        img.src = '/image.gif';
+        document.body.appendChild(img);
+    }, 4000);
+
+    setTimeout(() => {
+        let img = document.createElement('img');
+        img.src = '/people.jpeg';
+        document.body.appendChild(img);
+    }, 4000);
+
+    setTimeout(() => {
+        let img = document.createElement('img');
+        img.src = '/image.png';
+        document.body.appendChild(img);
+    }, 4000);
+
 }
