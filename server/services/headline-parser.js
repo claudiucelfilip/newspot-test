@@ -128,7 +128,7 @@ var scrape = async url => {
                     .filter(item => getNodeText(item).length > 50);
 
                 if (texts.length) {
-                    if (getProximity(texts[0], link) > fontSize * 2) {
+                    if (count > 3 && getProximity(texts[0], link) > 30) {
                         return;
                     }
                     texts = texts
@@ -163,34 +163,33 @@ var scrape = async url => {
                     parent.querySelectorAll('img')
                 );
                 if (images.length) {
-                    if (getProximity(images[0], link) > fontSize * 2) {
+                    if (count > 3 && getProximity(images[0], link) > 30) {
                         return;
                     }
                     let result = images
                         .filter(image => !image.classList.contains('already-used'))
                         .reduce(
-                        (acc, image) => {
-                            if (
-                                image.width >= acc.width &&
-                                image.height >= acc.height
-                            ) {
-                                Object.assign(acc, {
-                                    url: image.src,
-                                    image,
-                                    width: image.width,
-                                    height: image.height
-                                });
+                            (acc, image) => {
+                                if (
+                                    image.width >= acc.width &&
+                                    image.height >= acc.height
+                                ) {
+                                    Object.assign(acc, {
+                                        url: image.src,
+                                        image,
+                                        width: image.width,
+                                        height: image.height
+                                    });
+                                }
+                                return acc;
+                            }, {
+                                url: '',
+                                image: null,
+                                width: 70,
+                                height: 50
                             }
-                            return acc;
-                        },
-                        {
-                            url: '',
-                            image: null,
-                            width: 70,
-                            height: 50
-                        }
-                    );
-                    
+                        );
+
                     if (result.image) {
                         result.image.classList.add('already-used');
                         return result;
@@ -202,9 +201,7 @@ var scrape = async url => {
         }
 
         var links;
-        setTimeout(() => {
 
-        })
         links = Array.prototype.slice.call(document.querySelectorAll('a'));
 
         links = links.filter(item => {
@@ -234,8 +231,7 @@ var scrape = async url => {
                 acc.minSize = Math.min(acc.minSize, item.size);
                 acc.total++;
                 return acc;
-            },
-            {
+            }, {
                 total: 0,
                 maxSize: 0,
                 minSize: 10000,
@@ -267,8 +263,7 @@ var scrape = async url => {
         return links;
     });
 
-    rsmq.sendMessage(
-        { qname: 'myqueue', message: JSON.stringify(links) },
+    rsmq.sendMessage({ qname: 'myqueue', message: JSON.stringify(links) },
         function(err, resp) {
             if (resp) {
                 console.log('Message sent. ID:', resp);
