@@ -73,24 +73,24 @@ function serviceMessage(type, data) {
 }
 
 function addImages() {
-    setTimeout(() => {
-        let img = document.createElement('img');
-        img.src = '/tortoise.png';
-        document.body.appendChild(img);
-    }, 4000);
+    // setTimeout(() => {
+    //     let img = document.createElement('img');
+    //     img.src = '/tortoise.png';
+    //     document.body.appendChild(img);
+    // }, 4000);
 
-    setTimeout(() => {
-        let img = document.createElement('img');
-        img.src = '/image.svg';
-        document.body.appendChild(img);
-    }, 4000);
+    // setTimeout(() => {
+    //     let img = document.createElement('img');
+    //     img.src = '/image.svg';
+    //     document.body.appendChild(img);
+    // }, 4000);
 
 
-    setTimeout(() => {
-        let img = document.createElement('img');
-        img.src = '/image.gif';
-        document.body.appendChild(img);
-    }, 4000);
+    // setTimeout(() => {
+    //     let img = document.createElement('img');
+    //     img.src = '/image.gif';
+    //     document.body.appendChild(img);
+    // }, 4000);
 
     setTimeout(() => {
         let img = document.createElement('img');
@@ -98,10 +98,15 @@ function addImages() {
         document.body.appendChild(img);
     }, 4000);
 
+    // setTimeout(() => {
+    //     let img = document.createElement('img');
+    //     img.src = '/image.png';
+    //     document.body.appendChild(img);
+    // }, 4000);
+
     setTimeout(() => {
         let img = document.createElement('img');
-        img.src = '/image.png';
+        img.src = 'https://www.w3schools.com/css/trolltunga.jpg';
         document.body.appendChild(img);
     }, 4000);
-
 }

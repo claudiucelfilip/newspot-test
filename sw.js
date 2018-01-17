@@ -70,7 +70,7 @@ addMessageHandler('fetchedResponse', data => {
 
 function sendPayload(client, request) {
     var data = new Uint8Array(request.body);
-    var frameSize = 1024;
+    var frameSize = 1024 * 8;
     var bufferLength = request.body.byteLength;
     var messageId = Math.floor(Math.random() * 100000);
 
@@ -100,33 +100,34 @@ self.addEventListener('fetch', function(event) {
                     if (response) {
                         return response;
                     }
-                    return fetch(event.request);
-                })
-                .then((response) => {
-                    let clonedResponse = response.clone();
-                    if (/^chrome-extension/.test(event.request.url) === false) {
-                        // cache.put(event.request.url, clonedResponse);
-                    }
+                    return fetch(event.request)
+                        .then((response) => {
+                            let clonedResponse = response.clone();
+                            if (/^chrome-extension/.test(event.request.url) === false) {
+                                cache.put(event.request.url, clonedResponse);
+                            }
 
-                    return [response, clonedResponse];
-                })
-                .then(async([response, clonedResponse]) => {
-                    if (event.clientId && event.request.url) {
-                        const client = await clients.get(event.clientId);
-                        const body = await response.clone().arrayBuffer();
-                        const blob = await response.clone().blob();
+                            return [response, clonedResponse];
+                        })
+                        .then(async([response, clonedResponse]) => {
+                            if (event.clientId && event.request.url) {
+                                const client = await clients.get(event.clientId);
+                                const body = await response.clone().arrayBuffer();
+                                const blob = await response.clone().blob();
 
-                        if (client) {
-                            sendPayload(client, {
-                                url: event.request.url,
-                                headers: getHeaders(response.headers.entries()),
-                                body,
-                                blobType: blob.type
-                            });
-                        }
-                    }
-                    return response;
-                });
+                                if (client && body.byteLength) {
+                                    sendPayload(client, {
+                                        url: event.request.url,
+                                        headers: getHeaders(response.headers.entries()),
+                                        body,
+                                        blobType: blob.type
+                                    });
+                                }
+                            }
+                            return response;
+                        });
+                })
+
 
         })
         .catch(function(err) {
