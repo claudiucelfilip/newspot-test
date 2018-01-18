@@ -1,6 +1,6 @@
 const puppeteer = require('puppeteer');
-RedisSMQ = require('rsmq');
-rsmq = new RedisSMQ({ host: '127.0.0.1', port: 6379, ns: 'rsmq' });
+const RedisSMQ = require('rsmq');
+let rsmq, config;
 
 var scrape = async url => {
     const browser = await puppeteer.launch();
@@ -109,6 +109,7 @@ var scrape = async url => {
         function getExcerpt(link) {
             var parent = link.parentNode;
             var texts;
+            var parentCount = 1;
             var fontSize = parseInt(
                 getComputedStyle(link).getPropertyValue('font-size')
             );
@@ -128,7 +129,7 @@ var scrape = async url => {
                     .filter(item => getNodeText(item).length > 50);
 
                 if (texts.length) {
-                    if (count > 3 && getProximity(texts[0], link) > 30) {
+                    if (parentCount > 3 && getProximity(texts[0], link) > 30) {
                         return;
                     }
                     texts = texts
@@ -147,6 +148,7 @@ var scrape = async url => {
                     }
                 }
                 parent = parent.parentNode;
+                parentCount++;
             }
             return null;
         }
@@ -154,6 +156,7 @@ var scrape = async url => {
         function getImage(link) {
             var parent = link.parentNode;
             var images;
+            var parentCount = 1;
             var fontSize = parseInt(
                 getComputedStyle(link).getPropertyValue('font-size')
             );
@@ -163,7 +166,7 @@ var scrape = async url => {
                     parent.querySelectorAll('img')
                 );
                 if (images.length) {
-                    if (count > 3 && getProximity(images[0], link) > 30) {
+                    if (parentCount > 3 && getProximity(images[0], link) > 30) {
                         return;
                     }
                     let result = images
@@ -196,6 +199,7 @@ var scrape = async url => {
                     }
                 }
                 parent = parent.parentNode;
+                parentCount++;
             }
             return null;
         }
@@ -263,19 +267,59 @@ var scrape = async url => {
         return links;
     });
 
-    rsmq.sendMessage({ qname: 'myqueue', message: JSON.stringify(links) },
-        function(err, resp) {
-            if (resp) {
-                console.log('Message sent. ID:', resp);
-            }
-        }
-    );
-
     await browser.close();
+    return links;
 };
 
-exports.init = () => {
-    console.log('This is article parser');
-    scrape('http://www.adevarul.ro');
-    // scrape('http://www.mediafax.ro');
+function checkQueue() {
+    return new Promise((resolve, reject) => {
+        rsmq.receiveMessage({ qname: config.queues.headlineParser.name }, function(err, resp) {
+            if (err) {
+                return reject(err);
+            }
+            resolve(resp);
+        });
+    });
+}
+
+function removeMessage(messageId) {
+    return new Promise((resolve, reject) => {
+        rsmq.deleteMessage({ qname: config.queues.headlineParser.name, id: messageId }, function(err, resp) {
+            if (err) {
+                return reject(err);
+            }
+            resolve(resp);
+        });
+    });
+
+}
+
+function getHeadline() {
+    return checkQueue()
+        .then(resp => {
+            console.log('Headline check for message:', resp);
+            if (resp.message) {
+                let data = JSON.parse(resp.message);
+                return scrape(data.url).then((links) => {
+                    console.log('Parsed', data.url, links);
+                    return resp.id;
+                }).then(removeMessage);
+            }
+        }, err => {
+            console.log('Headlne check queue error:', err.message);
+        });
+
+}
+
+function start() {
+    return getHeadline().then(() => {
+        setTimeout(start, 1000);
+    });
+}
+
+exports.init = (initConfig) => {
+    config = initConfig;
+    rsmq = new RedisSMQ(config.redis);
+
+    start(config.queue.updateInterval);
 };
