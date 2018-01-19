@@ -56,21 +56,28 @@ function checkQueue() {
                 return reject(err);
             }
             if (!resp.length) {
-                return createQueue().then(resolve);
+                return createQueues().then(resolve);
             }
             resolve(resp);
         });
     });
 }
 
-function createQueue() {
+function createQueues() {
     return new Promise((resolve, reject) => {
-        rsmq.createQueue({ qname: config.queues.headlineParser.name }, function(err, resp) {
+        let headlineParser = rsmq.createQueue({ qname: config.queues.headlineParser.name }, function(err, resp) {
             if (err) {
                 return reject(err);
             }
             resolve(resp);
         });
+        let client = rsmq.createQueue({ qname: config.queues.client.name }, function(err, resp) {
+            if (err) {
+                return reject(err);
+            }
+            resolve(resp);
+        });
+        return Promise.all([headlineParser, client]);
     });
 }
 exports.init = (initConfig) => {
@@ -80,7 +87,7 @@ exports.init = (initConfig) => {
 
     checkQueue().then((data) => {
         setInterval(() => {
-            checkRevision(data)
+            checkRevision()
                 .then(createRevision)
                 .catch(err => {
                     debugger;

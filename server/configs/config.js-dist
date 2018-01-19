@@ -13,6 +13,9 @@ module.exports = {
     queues: {
         headlineParser: {
             name: 'headline-parser'
+        },
+        client: {
+            name: 'client',
         }
     },
     urls: [

@@ -1,6 +1,8 @@
 const puppeteer = require('puppeteer');
 const RedisSMQ = require('rsmq');
-let rsmq, config;
+const MongoClient = require('mongodb').MongoClient;
+
+let rsmq, db, config;
 
 var scrape = async url => {
     const browser = await puppeteer.launch();
@@ -294,7 +296,7 @@ function removeMessage(messageId) {
 
 }
 
-function getHeadline() {
+function getHeadlines() {
     return checkQueue()
         .then(resp => {
             console.log('Headline check for message:', resp);
@@ -302,8 +304,9 @@ function getHeadline() {
                 let data = JSON.parse(resp.message);
                 return scrape(data.url).then((links) => {
                     console.log('Parsed', data.url, links);
-                    return resp.id;
-                }).then(removeMessage);
+                    removeMessage(resp.id);
+                    return links;
+                });
             }
         }, err => {
             console.log('Headlne check queue error:', err.message);
@@ -311,15 +314,65 @@ function getHeadline() {
 
 }
 
-function start() {
-    return getHeadline().then(() => {
-        setTimeout(start, 1000);
+function storeArticles(links) {
+    const col = db.collection('articles');
+
+    let savePromises = links.map(link => {
+        return new Promise((resolve, reject) => {
+            col.update({ url: link.url }, link, { upsert: true }, (err, result) => {
+                if (err) {
+                    return reject(err);
+                }
+                resolve(result);
+            });
+        });
     });
+
+    return Promise.all(savePromises);
+}
+
+function notifyClient(results) {
+    let articleCount = results.reduce((acc, item) => {
+        if (item.result.nModified) {
+            acc.updated++;
+        } else {
+            acc.created++;
+        }
+        return acc;
+    }, {
+        updated: 0,
+        created: 0
+    })
+
+    let message = JSON.stringify({
+        type: 'new-articles',
+        count: articleCount
+    });
+    rsmq.sendMessage({ qname: config.queues.client.name, message }, function(err, resp) {
+        if (err) {
+            console.log('Error', err)
+            return;
+        }
+        console.log("Message sent. ID:", resp);
+    });
+}
+
+function start() {
+    return getHeadlines()
+        .then(storeArticles)
+        .then(notifyClient)
+        .then(() => {
+            setTimeout(start, 1000);
+        });
 }
 
 exports.init = (initConfig) => {
     config = initConfig;
     rsmq = new RedisSMQ(config.redis);
+    MongoClient.connect(config.mongo.host, function(err, client) {
+        console.log("Connected successfully to server");
+        db = client.db('newspot-test');
 
-    start(config.queue.updateInterval);
+        start();
+    });
 };
