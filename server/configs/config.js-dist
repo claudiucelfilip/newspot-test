@@ -1,0 +1,21 @@
+module.exports = {
+    redis: {
+        host: '',
+        port: 6379,
+        ns: 'rsmq'
+    },
+    mongo: {
+        host: ''
+    },
+    queue: {
+        updateInterval: 5000
+    },
+    queues: {
+        headlineParser: {
+            name: 'headline-parser'
+        }
+    },
+    urls: [
+        
+    ]
+}
