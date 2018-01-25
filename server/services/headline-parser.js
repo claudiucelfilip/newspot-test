@@ -117,6 +117,7 @@ var scrape = async url => {
             );
             var acceptedTags = [
                 'DIV',
+                'EM',
                 'SPAN',
                 'P',
                 'ARTICLE',

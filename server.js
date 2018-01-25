@@ -1,14 +1,24 @@
 var fs = require('fs'),
     https = require('https'),
+    https = require('https'),
     express = require('express'),
     request = require('request'),
     requestPromise = require('request-promise'),
     WebSocket = require('ws');
 var app = express();
+var read = require('node-readability');
 
+
+
+app.get('/read', (req, res, next) => {
+    let url = req.query.url;
+    read(url, function(err, article, meta) {
+        res.send(article.content);
+    });
+})
 app.get('/page', (req, res, next) => {
     let url = req.query.url;
-    
+
     if (/text\/html/g.test(req.headers.accept) === false) {
         return request.get({
             url,
@@ -16,17 +26,17 @@ app.get('/page', (req, res, next) => {
         }).pipe(res);
     }
     requestPromise.get({
-        url
-    })
-    .then(body => {
-        let domain = url.match(/.*?\/{2}.*?(?=\/|$)/)[0];
-        let replacement = `$1=$2https://local:8080/page?url=${domain}/`;
-        body = body.replace(/(src|href)=("|')\//gim, replacement);
-        body = body.replace(/(url)\(("|')?\//gim, replacement);
-        res.send(body);
-    }, err => {
-        res.send(err);
-    });
+            url
+        })
+        .then(body => {
+            let domain = url.match(/.*?\/{2}.*?(?=\/|$)/)[0];
+            let replacement = `$1=$2https://local:8080/page?url=${domain}/`;
+            body = body.replace(/(src|href)=("|')\//gim, replacement);
+            body = body.replace(/(url)\(("|')?\//gim, replacement);
+            res.send(body);
+        }, err => {
+            res.send(err);
+        });
     // res.redirect('http://' + req.params.url);
 });
 
