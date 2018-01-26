@@ -303,67 +303,60 @@ function getHeadlines() {
             console.log('Headline check for message:', resp);
             if (resp.message) {
                 let data = JSON.parse(resp.message);
-                return scrape(data.url).then((links) => {
-                    console.log('Parsed', data.url, links);
+                let revision = data.revision;
+
+                return scrape(data.url).then((articles) => {
                     removeMessage(resp.id);
-                    return links;
+                    return { revision, articles };
                 });
             }
+            throw new Error('no message');
         }, err => {
             console.log('Headlne check queue error:', err.message);
         });
 
 }
 
-function storeArticles(links) {
-    const col = db.collection('articles');
+// function storeArticles(links) {
+//     const col = db.collection('articles');
 
-    let savePromises = links.map(link => {
-        return new Promise((resolve, reject) => {
-            col.update({ url: link.url }, link, { upsert: true }, (err, result) => {
-                if (err) {
-                    return reject(err);
-                }
-                resolve(result);
-            });
+//     let savePromises = links.map(link => {
+//         return new Promise((resolve, reject) => {
+//             col.update({ url: link.url }, link, { upsert: true }, (err, result) => {
+//                 if (err) {
+//                     return reject(err);
+//                 }
+//                 resolve(result);
+//             });
+//         });
+//     });
+
+//     notifyArticleParses(links);
+
+//     return Promise.all(savePromises);
+// }
+
+function notifyArticleParsers({ revision, articles }) {
+    articles.forEach(article => {
+        let message = JSON.stringify({
+            revision,
+            article
         });
-    });
-
-    return Promise.all(savePromises);
-}
-
-function notifyClient(results) {
-    let articleCount = results.reduce((acc, item) => {
-        if (item.result.nModified) {
-            acc.updated++;
-        } else {
-            acc.created++;
-        }
-        return acc;
-    }, {
-        updated: 0,
-        created: 0
-    })
-
-    let message = JSON.stringify({
-        type: 'new-articles',
-        count: articleCount
-    });
-    rsmq.sendMessage({ qname: config.queues.client.name, message }, function(err, resp) {
-        if (err) {
-            console.log('Error', err)
-            return;
-        }
-        console.log("Message sent. ID:", resp);
+        rsmq.sendMessage({ qname: config.queues.articleParser.name, message }, function(err, resp) {
+            if (err) {
+                console.log('Error', err)
+                return;
+            }
+            console.log("Message sent. ID:", resp);
+        });
     });
 }
 
 function start() {
     return getHeadlines()
-        .then(storeArticles)
-        .then(notifyClient)
+        .then(notifyArticleParsers, console.error)
         .then(() => {
-            setTimeout(start, 1000);
+            setTimeout(start, 5000);
         });
 }
 

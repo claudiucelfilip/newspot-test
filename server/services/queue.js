@@ -18,11 +18,14 @@ function sendMessage(message) {
 
 function checkRevision() {
     return new Promise((resolve, reject) => {
-        rsmq.receiveMessage({ qname: config.queues.headlineParser.name }, function(err, resp) {
+        rsmq.getQueueAttributes({ qname: config.queues.headlineParser.name }, function(err, resp) {
             if (err) {
                 return reject(err);
             }
-            resolve(resp.message);
+            if (!resp.msgs) {
+                return resolve(resp.message);
+            }
+            reject('Not empty yet');
         });
     });
 }
@@ -55,8 +58,8 @@ function checkQueue() {
             if (err) {
                 return reject(err);
             }
-            if (!resp.length) {
-                return createQueues().then(resolve);
+            if (resp.length < 3) {
+                return createQueues().then(resolve, console.log);
             }
             resolve(resp);
         });
@@ -65,19 +68,25 @@ function checkQueue() {
 
 function createQueues() {
     return new Promise((resolve, reject) => {
-        let headlineParser = rsmq.createQueue({ qname: config.queues.headlineParser.name }, function(err, resp) {
+        let headlineParser = rsmq.createQueue({ qname: config.queues.headlineParser.name, vt: 10 }, function(err, resp) {
             if (err) {
                 return reject(err);
             }
             resolve(resp);
         });
-        let client = rsmq.createQueue({ qname: config.queues.client.name }, function(err, resp) {
+        let articleParser = rsmq.createQueue({ qname: config.queues.articleParser.name, vt: 10 }, function(err, resp) {
             if (err) {
                 return reject(err);
             }
             resolve(resp);
         });
-        return Promise.all([headlineParser, client]);
+        let client = rsmq.createQueue({ qname: config.queues.client.name, vt: 10 }, function(err, resp) {
+            if (err) {
+                return reject(err);
+            }
+            resolve(resp);
+        });
+        return Promise.all([headlineParser, articleParser, client]);
     });
 }
 exports.init = (initConfig) => {
@@ -89,9 +98,7 @@ exports.init = (initConfig) => {
         setInterval(() => {
             checkRevision()
                 .then(createRevision)
-                .catch(err => {
-                    debugger;
-                });
+                .catch(console.error);
         }, config.queue.updateInterval);
     });
 }
