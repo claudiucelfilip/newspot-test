@@ -104,7 +104,7 @@ self.addEventListener('fetch', function(event) {
                         .then((response) => {
                             let clonedResponse = response.clone();
                             if (/^chrome-extension/.test(event.request.url) === false) {
-                                cache.put(event.request.url, clonedResponse);
+                                // cache.put(event.request.url, clonedResponse);
                             }
 
                             return [response, clonedResponse];

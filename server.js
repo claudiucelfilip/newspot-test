@@ -1,3 +1,8 @@
+const webpack = require('webpack');
+const middleware = require('webpack-dev-middleware');
+const webpackConfig = require('./webpack.config.js');
+const compiler = webpack(webpackConfig);
+
 var fs = require('fs'),
     https = require('https'),
     https = require('https'),
@@ -6,47 +11,54 @@ var fs = require('fs'),
     requestPromise = require('request-promise'),
     WebSocket = require('ws');
 var app = express();
-var read = require('node-readability');
 
 
+app.use(
+    middleware(compiler, {
+        // webpack-dev-middleware options
+    })
+);
 
-app.get('/read', (req, res, next) => {
-    let url = req.query.url;
-    read(url, function(err, article, meta) {
-        res.send(article.content);
-    });
-})
 app.get('/page', (req, res, next) => {
     let url = req.query.url;
 
     if (/text\/html/g.test(req.headers.accept) === false) {
-        return request.get({
-            url,
-            headers: req.headers
-        }).pipe(res);
+        return request
+            .get({
+                url,
+                headers: req.headers
+            })
+            .pipe(res);
     }
-    requestPromise.get({
+    requestPromise
+        .get({
             url
         })
-        .then(body => {
-            let domain = url.match(/.*?\/{2}.*?(?=\/|$)/)[0];
-            let replacement = `$1=$2https://local:8080/page?url=${domain}/`;
-            body = body.replace(/(src|href)=("|')\//gim, replacement);
-            body = body.replace(/(url)\(("|')?\//gim, replacement);
-            res.send(body);
-        }, err => {
-            res.send(err);
-        });
+        .then(
+            body => {
+                let domain = url.match(/.*?\/{2}.*?(?=\/|$)/)[0];
+                let replacement = `$1=$2https://local:8080/page?url=${domain}/`;
+                body = body.replace(/(src|href)=("|')\//gim, replacement);
+                body = body.replace(/(url)\(("|')?\//gim, replacement);
+                res.send(body);
+            },
+            err => {
+                res.send(err);
+            }
+        );
     // res.redirect('http://' + req.params.url);
 });
 
 app.use(express.static('.'));
 
-const server = https.createServer({
-    key: fs.readFileSync('./key-localhost.pem'),
-    cert: fs.readFileSync('./cert-localhost.pem'),
-    passphrase: 'lola'
-}, app);
+const server = https.createServer(
+    {
+        key: fs.readFileSync('./key-localhost.pem'),
+        cert: fs.readFileSync('./cert-localhost.pem'),
+        passphrase: 'lola'
+    },
+    app
+);
 
 const wServer = new WebSocket.Server({ server });
 
@@ -59,13 +71,13 @@ wServer.on('connection', function(ws) {
         if (typeof message !== 'string') {
             message = JSON.stringify(message);
         }
-        let client = (socket || ws);
+        let client = socket || ws;
         if (client.readyState === WebSocket.OPEN) {
             client.send(message);
         }
     }
 
-    ws.on('message', (message) => {
+    ws.on('message', message => {
         let action = JSON.parse(message);
 
         switch (action.type) {
@@ -87,7 +99,7 @@ wServer.on('connection', function(ws) {
                 break;
             case 'requestOffer':
                 console.log(offers.map(offer => offer.uuid));
-                let offerId = (action.data && action.data.id);
+                let offerId = action.data && action.data.id;
                 sendMessage({
                     type: 'offer',
                     data: getOffer(offerId)
@@ -95,47 +107,48 @@ wServer.on('connection', function(ws) {
                 break;
             case 'sendAnswer':
                 removeOffer(action.data.id);
-                sendMessage({
-                    type: 'answer',
-                    data: action.data
-                }, peers[action.data.target]);
+                sendMessage(
+                    {
+                        type: 'answer',
+                        data: action.data
+                    },
+                    peers[action.data.target]
+                );
         }
 
         function broadcast(message) {
-            wServer.clients.forEach((client) => {
+            wServer.clients.forEach(client => {
                 if (client !== ws && client.readyState === WebSocket.OPEN) {
                     sendMessage(message, client);
                 }
             });
         }
-
     });
-
 
     ws.on('close', () => {
         delete peers[currentPeer];
-        offers = offers.filter((offer) => {
+        offers = offers.filter(offer => {
             return offer.uuid !== currentPeer;
         });
         console.log('Peer Left', currentPeer, Object.keys(peers));
     });
 
-    ws.on('error', (err) => {
+    ws.on('error', err => {
         console.log(err);
     });
 
     function removeOffer(id) {
-        return offers = offers.filter(offer => offer.id !== id);
+        return (offers = offers.filter(offer => offer.id !== id));
     }
 
     function getOffer(id) {
         var index;
         if (id) {
-            index = offers.findIndex((offer) => {
+            index = offers.findIndex(offer => {
                 return offer.id === id;
             });
         } else {
-            index = offers.findIndex((offer) => {
+            index = offers.findIndex(offer => {
                 return offer.uuid !== currentPeer;
             });
         }
@@ -145,9 +158,6 @@ wServer.on('connection', function(ws) {
         return offers.splice(index, 1)[0];
         // return offers[index];
     }
-
 });
-
-
 
 server.listen(8080);
