@@ -213,7 +213,7 @@ var scrape = async url => {
 
         links = links.filter(item => {
             var text = cleanText(item.innerText);
-            return /\s.*\s.*\s/g.test(text);
+            return /.+\s.+\s.+/g.test(text);
         });
 
         links = links.filter(link => link.offsetTop > 0);
@@ -297,46 +297,76 @@ function removeMessage(messageId) {
 
 }
 
+function onlyChanged(items) {
+    return (article) => {
+        let item = items.find(item => item.url === article.url) || {};
+        return item.headline && item.headline !== article.headline;
+    }
+}
+
+function checkDuplicates({ articles, source }) {
+    const col = db.collection('articles');
+
+    let urls = articles.map(article => article.url);
+    return new Promise((resolve, reject) => {
+        col.find({ url: { $in: urls } }).toArray((err, items) => {
+            if (err) {
+                return reject(err);
+            }
+            if (!items.length) {
+                return resolve({ articles, source });
+            }
+            resolve({ articles: articles.filter(onlyChanged(items)), source });
+        });
+    });
+
+}
+
+function saveRevision({ articles, source }) {
+    const col = db.collection('revisions');
+    const revision = (new Date()).getTime();
+
+    let count = articles.length;
+    console.log('saved revision', revision);
+
+    return new Promise((resolve, reject) => {
+        col.insert({ revision, source, count }, (err, result) => {
+            if (err) {
+                return reject(err);
+            }
+            resolve({ revision, articles, source });
+        })
+    })
+};
+
 function getHeadlines() {
     return checkQueue()
         .then(resp => {
             console.log('Headline check for message:', resp);
             if (resp.message) {
                 let data = JSON.parse(resp.message);
-                let revision = data.revision;
+                let source = data.url;
 
-                return scrape(data.url).then((articles) => {
-                    removeMessage(resp.id);
-                    return { revision, articles };
-                });
+                return scrape(source)
+                    .then((articles) => {
+                        removeMessage(resp.id);
+                        return { articles, source };
+                    }, err => {
+                        console.error(err);
+                    })
+                    .then(checkDuplicates);
             }
-            throw new Error('no message');
+            return Promise.reject('No message');
         }, err => {
             console.log('Headlne check queue error:', err.message);
         });
 
 }
 
-// function storeArticles(links) {
-//     const col = db.collection('articles');
-
-//     let savePromises = links.map(link => {
-//         return new Promise((resolve, reject) => {
-//             col.update({ url: link.url }, link, { upsert: true }, (err, result) => {
-//                 if (err) {
-//                     return reject(err);
-//                 }
-//                 resolve(result);
-//             });
-//         });
-//     });
-
-//     notifyArticleParses(links);
-
-//     return Promise.all(savePromises);
-// }
-
-function notifyArticleParsers({ revision, articles }) {
+function notifyArticleParsers({ revision, articles, source }) {
+    if (!articles.length) {
+        return Promise.reject('No new headlines');
+    }
     articles.forEach(article => {
         let message = JSON.stringify({
             revision,
@@ -347,14 +377,18 @@ function notifyArticleParsers({ revision, articles }) {
                 console.log('Error', err)
                 return;
             }
-            console.log("Message sent. ID:", resp);
+            console.log("Message sent:", article.url);
         });
     });
+
+    return { revision, articles, source };
 }
 
 function start() {
     return getHeadlines()
-        .then(notifyArticleParsers, console.error)
+        .then(saveRevision)
+        .then(notifyArticleParsers)
+        .catch(console.error)
         .then(() => {
             setTimeout(start, 5000);
         });
@@ -365,7 +399,7 @@ exports.init = (initConfig) => {
     rsmq = new RedisSMQ(config.redis);
     MongoClient.connect(config.mongo.host, function(err, client) {
         console.log("Connected successfully to server");
-        db = client.db('newspot-test');
+        db = client.db(config.mongo.database);
 
         start();
     });

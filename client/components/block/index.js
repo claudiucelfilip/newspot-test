@@ -3,6 +3,8 @@ import Article from '../article';
 
 export default class Page extends Component {
     render() {
-        return <Article />;
+        return <div className="block">
+            <Article article={this.props.article}/>
+        </div>;
     }
 }

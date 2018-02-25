@@ -1,6 +1,7 @@
 const path = require('path');
 const serviceType = process.argv[2];
-const config = require('./configs/config');
+const configType = process.argv[3] || 'config';
+const config = require('./configs/' + configType);
 
 
 if (!serviceType) {

@@ -4,13 +4,13 @@ module.exports = {
         port: 6379,
         ns: 'rsmq'
     },
-    freshStart: false,
+    freshStart: true,
     mongo: {
-        host: '',
-        database: ''
+        host: 'mongodb://db:lola@ds237748.mlab.com:37748/newspot-test2',
+        database: 'newspot-test2'
     },
     queue: {
-        updateInterval: 5 * 60 * 1000
+        updateInterval: 10 * 1000
     },
     queues: {
         headlineParser: {
@@ -23,5 +23,8 @@ module.exports = {
             name: 'client',
         }
     },
-    urls: []
+    urls: [
+        'http://local:8000/test/headlines.html',
+        'http://local:8000/test/headlines2.html'
+    ]
 }

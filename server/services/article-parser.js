@@ -102,7 +102,7 @@ var scrape = async url => {
                 }, {})
             avgFontsize = Object.keys(avgFontsize)
                 .sort((a, b) => avgFontsize[b] - avgFontsize[a]);
-            return parseInt(avgFontsize[0]);
+            return parseInt(avgFontsize[0] || 0);
         }
 
         function getAvgTextSize(children) {
@@ -117,7 +117,7 @@ var scrape = async url => {
                 }, {})
             avgFontsize = Object.keys(avgFontsize)
                 .sort((a, b) => avgFontsize[b] - avgFontsize[a]);
-            return parseInt(avgFontsize[0]);
+            return parseInt(avgFontsize[0] || 0);
         }
 
         function hasProperLength(child) {
@@ -236,10 +236,17 @@ function getArticle() {
                 return scrape(data.article.url)
                     .then(content => {
                         removeMessage(resp.id);
-                        return Object.assign({}, data.article, { content });
+                        return Object.assign({}, data.article, {
+                            content,
+                            revision: data.revision
+                        });
                     });
             }
-            throw new Error('No message');
+            return new Promise((resolve, reject) => {
+                setTimeout(() => {
+                    reject('No new message');
+                }, 3000);
+            });
         }, err => {
             console.log('Article check queue error:', err.message);
         });
@@ -302,7 +309,7 @@ exports.init = (initConfig) => {
     rsmq = new RedisSMQ(config.redis);
     MongoClient.connect(config.mongo.host, function(err, client) {
         console.log("Connected successfully to server");
-        db = client.db('newspot-test');
+        db = client.db(config.mongo.database);
 
         start();
     });

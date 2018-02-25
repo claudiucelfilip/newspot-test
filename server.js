@@ -1,24 +1,39 @@
 const webpack = require('webpack');
 const middleware = require('webpack-dev-middleware');
-const webpackConfig = require('./webpack.config.js');
+const webpackConfig = require('./webpack.config');
 const compiler = webpack(webpackConfig);
 
 var fs = require('fs'),
     https = require('https'),
-    https = require('https'),
+    http = require('http'),
     express = require('express'),
     request = require('request'),
     requestPromise = require('request-promise'),
     WebSocket = require('ws');
 var app = express();
+const MongoClient = require('mongodb').MongoClient;
+const config = require('./server/configs/config');
+let rsmq, db, col;
 
+
+app.get('/articles', (req, res, next) => {
+    col.find({}).toArray((err, articles) => {
+        res.send(articles);
+    });
+});
 
 app.use(
-    middleware(compiler, {
-        // webpack-dev-middleware options
-    })
+    middleware(compiler)
 );
 
+app.get('/proxy', (req, res, next) => {
+    let url = req.query.url;
+    return request
+        .get({
+            url
+        })
+        .pipe(res);
+})
 app.get('/page', (req, res, next) => {
     let url = req.query.url;
 
@@ -51,14 +66,15 @@ app.get('/page', (req, res, next) => {
 
 app.use(express.static('.'));
 
-const server = https.createServer(
-    {
+const server = https.createServer({
         key: fs.readFileSync('./key-localhost.pem'),
         cert: fs.readFileSync('./cert-localhost.pem'),
         passphrase: 'lola'
     },
     app
 );
+
+const unsecServer = http.createServer(app);
 
 const wServer = new WebSocket.Server({ server });
 
@@ -107,8 +123,7 @@ wServer.on('connection', function(ws) {
                 break;
             case 'sendAnswer':
                 removeOffer(action.data.id);
-                sendMessage(
-                    {
+                sendMessage({
                         type: 'answer',
                         data: action.data
                     },
@@ -159,5 +174,11 @@ wServer.on('connection', function(ws) {
         // return offers[index];
     }
 });
+MongoClient.connect(config.mongo.host, function(err, client) {
+    console.log("Connected successfully to server");
+    db = client.db('newspot-test');
+    col = db.collection('articles');
 
-server.listen(8080);
+    server.listen(8080);
+    unsecServer.listen(8000);
+});
