@@ -322,32 +322,15 @@ function checkDuplicates({ articles, source }) {
 
 }
 
-function saveRevision({ articles, source }) {
-    const col = db.collection('revisions');
-    const revision = (new Date()).getTime();
-
-    let count = articles.length;
-    console.log('saved revision', revision);
-
-    return new Promise((resolve, reject) => {
-        col.insert({ revision, source, count }, (err, result) => {
-            if (err) {
-                return reject(err);
-            }
-            resolve({ revision, articles, source });
-        })
-    })
-};
-
 function getHeadlines() {
     return checkQueue()
         .then(resp => {
             console.log('Headline check for message:', resp);
             if (resp.message) {
                 let data = JSON.parse(resp.message);
-                let source = data.url;
+                let source = data.source;
 
-                return scrape(source)
+                return scrape(source.url)
                     .then((articles) => {
                         removeMessage(resp.id);
                         return { articles, source };
@@ -363,14 +346,17 @@ function getHeadlines() {
 
 }
 
-function notifyArticleParsers({ revision, articles, source }) {
+function notifyArticleParsers({ articles, source }) {
     if (!articles.length) {
         return Promise.reject('No new headlines');
     }
+    const revision = (new Date()).getTime();
+
     articles.forEach(article => {
         let message = JSON.stringify({
             revision,
-            article
+            article,
+            source
         });
         rsmq.sendMessage({ qname: config.queues.articleParser.name, message }, function(err, resp) {
             if (err) {
@@ -386,7 +372,6 @@ function notifyArticleParsers({ revision, articles, source }) {
 
 function start() {
     return getHeadlines()
-        .then(saveRevision)
         .then(notifyArticleParsers)
         .catch(console.error)
         .then(() => {

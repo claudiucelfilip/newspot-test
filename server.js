@@ -11,20 +11,16 @@ var fs = require('fs'),
     requestPromise = require('request-promise'),
     WebSocket = require('ws');
 var app = express();
-const MongoClient = require('mongodb').MongoClient;
+
 const config = require('./server/configs/config');
-let rsmq, db, col;
-
-
-app.get('/articles', (req, res, next) => {
-    col.find({}).toArray((err, articles) => {
-        res.send(articles);
-    });
-});
+const apiRoutes = require('./api');
+const mongo = require('./api/data/mongo');
 
 app.use(
     middleware(compiler)
 );
+
+app.use('/api', apiRoutes);
 
 app.get('/proxy', (req, res, next) => {
     let url = req.query.url;
@@ -174,11 +170,8 @@ wServer.on('connection', function(ws) {
         // return offers[index];
     }
 });
-MongoClient.connect(config.mongo.host, function(err, client) {
-    console.log("Connected successfully to server");
-    db = client.db('newspot-test');
-    col = db.collection('articles');
-
-    server.listen(8080);
-    unsecServer.listen(8000);
-});
+mongo.connect(config.mongo)
+    .then(() => {
+        server.listen(8080);
+        unsecServer.listen(8000);
+    });

@@ -25,29 +25,37 @@ function checkRevision() {
                 return reject(err);
             }
             if (!resp.msgs) {
-                return resolve(resp.message);
+                return resolve();
             }
             reject('Not empty yet');
         });
     });
 }
 
-function triggerRevision(data) {
-    return new Promise((resolve, reject) => {
-        if (data) {
-            data = JSON.parse(data);
-            console.log('Revision exists', data.revision);
-            return resolve();
-        }
+function getSources() {
+    let sources = db.collection('sources');
 
+    return new Promise((resolve, reject) => {
+        sources.find({}).toArray((err, resp) => {
+            if (err) {
+                return reject(err);
+            }
+            resolve(resp);
+        });
+    });
+}
+
+function triggerRevision(sources) {
+    return new Promise((resolve, reject) => {
         console.log(`Starting revision`);
-        config.urls.forEach(url => {
+
+        sources.forEach(source => {
             let message = {
-                url
+                source
             };
             notiyHeadlinParsers(message).then(() => {
-                console.log(`added: ${url}`);
-            })
+                console.log(`added: ${source.url}`);
+            });
         });
         resolve();
     });
@@ -108,25 +116,30 @@ function createQueues() {
 
 function createCollections() {
     let articles = db.collection('articles');
-    let revisions = db.collection('revisions');
     let sources = db.collection('sources');
 
     return Promise.all([
         promisify(articles, articles.ensureIndex, { url: 1 }, { unique: true }),
-        promisify(revisions, revisions.ensureIndex, { source: 1 }, { unique: false }),
         promisify(sources, sources.ensureIndex, { url: 1 }, { unique: true })
     ]);
 }
 
+function populateSources() {
+    let sources = db.collection('sources');
+    let sourcesPromisess = config.sources.map(source => {
+        return promisify(sources, sources.insert, source);
+    });
+
+    return Promise.all(sourcesPromisess);
+}
+
 function resetCollections() {
     let articles = db.collection('articles');
-    let revisions = db.collection('revisions');
     let sources = db.collection('sources');
 
     return Promise.all([
         promisify(articles, articles.remove, {}),
-        promisify(revisions, revisions.remove, {}),
-        promisify(sources, sources.remove, {})
+        promisify(sources, sources.remove, {}).then(populateSources)
     ]);
 }
 
@@ -140,6 +153,7 @@ function resetQueues(err) {
 
 function trigger() {
     checkRevision()
+        .then(getSources)
         .then(triggerRevision)
         .catch(console.error);
 }

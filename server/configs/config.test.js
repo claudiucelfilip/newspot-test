@@ -23,8 +23,13 @@ module.exports = {
             name: 'client',
         }
     },
-    urls: [
-        'http://local:8000/test/headlines.html',
-        'http://local:8000/test/headlines2.html'
+    sources: [{
+            url: 'http://local:8000/test/headlines.html',
+            name: 'Headlines 1'
+        },
+        {
+            url: 'http://local:8000/test/headlines2.html',
+            name: 'Headlines 2'
+        }
     ]
 }

@@ -228,7 +228,6 @@ function removeMessage(messageId) {
 function getArticle() {
     return checkQueue()
         .then(resp => {
-
             if (resp.message) {
                 let data = JSON.parse(resp.message);
                 console.log('..............................................................');
@@ -238,7 +237,8 @@ function getArticle() {
                         removeMessage(resp.id);
                         return Object.assign({}, data.article, {
                             content,
-                            revision: data.revision
+                            revision: data.revision,
+                            source: data.source._id
                         });
                     });
             }
