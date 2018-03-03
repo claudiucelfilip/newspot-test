@@ -1,4 +1,4 @@
-const API = '/articles';
+const API = '/api/articles';
 export const REQUEST_ARTICLES = 'REQUEST_ARTICLES';
 export const RECEIVE_ARTICLES = 'RECEIVE_ARTICLES';
 

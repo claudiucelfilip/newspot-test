@@ -15,14 +15,16 @@ export default class Pan extends Component {
     }
 
     componentDidMount() {
-        this.node.addEventListener('mousedown', this.handlePanStart);
-        this.node.addEventListener('touchstart', this.handlePanStart);
+        this.node.addEventListener('mousedown', this.wrapMouseEvent(this.handlePanStart), false);
+        this.node.addEventListener('touchstart', this.wrapTouchEvent(this.handlePanStart), false);
 
-        this.node.addEventListener('mousemove', this.handlePanMove);
-        this.node.addEventListener('touchmove', this.handlePanMove);
+        this.node.addEventListener('mousemove', this.wrapMouseEvent(this.handlePanMove), false);
+        this.node.addEventListener('mousewheel', this.wrapScrollEvent(this.handlePanMove), false);
+	    this.node.addEventListener('DOMMouseScroll', this.wrapScrollEvent(this.handlePanMove), false);
+        this.node.addEventListener('touchmove', this.wrapTouchEvent(this.handlePanMove), false);
 
-        this.node.addEventListener('mouseup', this.handlePanStop);
-        this.node.addEventListener('touchend', this.handlePanStop);
+        this.node.addEventListener('mouseup', this.wrapMouseEvent(this.handlePanStop), false);
+        this.node.addEventListener('touchend', this.wrapTouchEvent(this.handlePanStop), false);
 
         this.setState({
             pointerTop: this.node.offsetTop,
@@ -30,35 +32,45 @@ export default class Pan extends Component {
         });
     }
 
-    handlePanStart = (e) => {
-        console.log('Pan Start', e);
+    wrapTouchEvent(fn) {
+        return function(e) {
+            let posX = e.touches[0].clientX;
+            let posY = e.touches[0].clientY;
 
-        let posX = e.x;
-        let posY = e.y;
-
-        if (e.type === 'touchstart') {
-            posX = e.touches[0].clientX;
-            posY = e.touches[0].clientY;
+            fn(e, posX, posY);
         }
-            
+    }
+
+    wrapMouseEvent(fn) {
+        return function(e) {
+            let posX = e.x;
+            let posY = e.y;
+
+            fn(e, posX, posY);
+        }
+    }
+
+    wrapScrollEvent(fn) {
+        let posX = 0;
+        let posY = 0;
+
+        return function(e) {
+            posX -= e.deltaX;
+            posY -= e.deltaY;
+            fn(e, posX, posY, true);
+        }
+    }
+
+    handlePanStart = (e, posX, posY) => {
         this.setState({
             dragging: true,
             pointerLeft: posX,
             pointerTop: posY,
         });
-        
     }
 
-    handlePanMove = (e) => {
-        if (this.state.dragging) {
-            let posX = e.x;
-            let posY = e.y;
-
-            if (e.type === 'touchmove') {
-                posX = e.touches[0].clientX;
-                posY = e.touches[0].clientY;
-            }
-
+    handlePanMove = (e, posX, posY, forceDragg) => {
+        if (this.state.dragging || forceDragg) {
             let diffLeft = posX - this.state.pointerLeft;
             let diffTop = posY - this.state.pointerTop;
 
@@ -80,22 +92,12 @@ export default class Pan extends Component {
                 panLeft: !isOutsideLeft && !isOutsideRight ? newPanLeft : this.state.panLeft,
                 panTop: !isOutsideTop ? newPanTop : this.state.panTop,
             });
+
             e.preventDefault();
         }
     }
 
-    handlePanStop = (e) => {
-        let posX = e.x;
-        let posY = e.y;
-
-        if (e.type === 'touchend') {
-            if (!e.touches.length) {
-                return;
-            }
-            posX = e.touches[0].clientX;
-            posY = e.touches[0].clientY;
-        }
-
+    handlePanStop = (e, posX, posY) => {
         this.setState({
             dragging: false,
             pointerLeft: posX,
@@ -103,6 +105,7 @@ export default class Pan extends Component {
         });
         e.preventDefault();
     }
+
     render() {
         let style = {
             transform: `translate(${this.state.panLeft}px, ${this.state.panTop}px)`,

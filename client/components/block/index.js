@@ -97,9 +97,11 @@ export default class Page extends Component {
         }
     }
 
-    render() {
+    componentWillUpdate() {
         this.calculateVisibility();
+    }
 
+    render() {
         let style = {
             left: this.state.blockLeft + 'px',
             top: this.state.blockTop + 'px',

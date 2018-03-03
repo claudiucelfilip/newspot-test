@@ -35,7 +35,7 @@ export default class Row extends Component {
 
         let threshold = this.props.verticalDirection < 0 ? 3 : 4;
 
-        let hiddenBlocks = this.blockRefs.filter(block => block.state.visibility === threshold);
+        let hiddenBlocks = this.blockRefs.filter(block => block && block.state.visibility === threshold);
         if ( hiddenBlocks.length === this.props.blocks.length) {
             this.changeVerticalIndex(this.props.verticalDirection);
         }
@@ -49,7 +49,7 @@ export default class Row extends Component {
                 ref={block => this.blockRefs[index] = block}
                 onVisibilityChange={this.handleVisibility}
                 index={index}
-                article={block}/>
+                block={block}/>
             )
         }
         </section>;

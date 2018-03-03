@@ -32,6 +32,13 @@ export default class Column extends Component {
         });
     }
 
+    handleScroll = (e) => {
+        let posX = e.target.scrollLeft;
+        let posY = e.target.scrollTop;
+
+        this.pan.handlePanMove(e, posX, posY);
+    }
+
     render() {
         let panWidth = this.props.cols * this.props.blockWidth;
         let panHeight = Math.floor(this.props.articles.length / this.props.cols) * this.props.blockHeight;
@@ -42,16 +49,19 @@ export default class Column extends Component {
             content: []
         });
 
-        let rows = blocks.reduce((acc, item, index) => {
+        let rows = blocks.reduce((acc, block, index) => {
             let rowIndex = index % this.state.rows;
             acc[rowIndex] = acc[rowIndex] || [];
-            acc[rowIndex].push(item);
+            acc[rowIndex].push({
+                index
+            });
             return acc;
         }, []);
 
         return <section className="scroll" onScroll={this.handleScroll} ref={container => this.container = container}>
             <Pan containerWidth={this.state.width} 
                 containerHeight={this.state.height}
+                ref={pan => this.pan = pan}
                 width={panWidth}
                 height={panHeight}>
                 {rows.map((blocks, index) => <Row key={index} 

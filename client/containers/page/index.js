@@ -26,8 +26,8 @@ class Page extends Component {
             <h1>Hello world</h1>
             <Scroll 
                 articles={articles} 
-                blockWidth={640}
-                blockHeight={480}
+                blockWidth={120}
+                blockHeight={100}
                 cols={12}
             />
         </div>;
