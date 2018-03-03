@@ -6,6 +6,27 @@ iframe {
     margin: 0;
 }
 
-body {
-    background: red;
+* {
+    box-sizing: border-box;
+}
+
+.scroll {
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    border: solid 5px #333;
+    position: absolute;
+    
+    box-shadow: 0 0 100px 10px rgba(0,0,0,0.2);
+    overflow: hidden;
+}
+
+.block {
+    border: solid 1px #666;
+    position: absolute;
+}
+
+.pan {
+    position: relative;
 }

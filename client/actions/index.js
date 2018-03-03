@@ -2,14 +2,14 @@ const API = '/articles';
 export const REQUEST_ARTICLES = 'REQUEST_ARTICLES';
 export const RECEIVE_ARTICLES = 'RECEIVE_ARTICLES';
 
-function receiveArticles(articles) {
+export function receiveArticles(articles) {
     return {
         type: RECEIVE_ARTICLES,
         payload: { articles }
     }
 }
 
-function requestArticles() {
+export function requestArticles() {
     return {
         type: REQUEST_ARTICLES
     }

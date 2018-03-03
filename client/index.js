@@ -10,7 +10,7 @@ import { fetchArticles } from './actions';
 let store = createStore(articlesApp, 
     applyMiddleware(thunkMiddleware)
 );
-store.dispatch(fetchArticles());
+// store.dispatch(fetchArticles());
 
 window.store = store;
 
