@@ -64,8 +64,10 @@ function triggerRevision(sources) {
 function checkCollections() {
     return new Promise((resolve, reject) => {
         db.collections((err, resp) => {
-            if (resp.length < 3) {
-                return createCollections().then(resolve, console.log);
+            if (resp.length <= 3) {
+                return createCollections()
+                    .then(populateSources)
+                    .then(resolve, console.log);
             }
             resolve(resp);
         })
@@ -139,7 +141,7 @@ function resetCollections() {
 
     return Promise.all([
         promisify(articles, articles.remove, {}),
-        promisify(sources, sources.remove, {}).then(populateSources)
+        promisify(sources, sources.remove, {})
     ]);
 }
 

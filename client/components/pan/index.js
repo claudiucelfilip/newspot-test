@@ -15,15 +15,15 @@ export default class Pan extends Component {
     }
 
     componentDidMount() {
-        this.node.addEventListener('mousedown', this.wrapMouseEvent(this.handlePanStart), false);
+        // this.node.addEventListener('mousedown', this.wrapMouseEvent(this.handlePanStart), false);
         this.node.addEventListener('touchstart', this.wrapTouchEvent(this.handlePanStart), false);
 
-        this.node.addEventListener('mousemove', this.wrapMouseEvent(this.handlePanMove), false);
+        // this.node.addEventListener('mousemove', this.wrapMouseEvent(this.handlePanMove), false);
         this.node.addEventListener('mousewheel', this.wrapScrollEvent(this.handlePanMove), false);
 	    this.node.addEventListener('DOMMouseScroll', this.wrapScrollEvent(this.handlePanMove), false);
         this.node.addEventListener('touchmove', this.wrapTouchEvent(this.handlePanMove), false);
 
-        this.node.addEventListener('mouseup', this.wrapMouseEvent(this.handlePanStop), false);
+        // this.node.addEventListener('mouseup', this.wrapMouseEvent(this.handlePanStop), false);
         this.node.addEventListener('touchend', this.wrapTouchEvent(this.handlePanStop), false);
 
         this.setState({
@@ -33,7 +33,7 @@ export default class Pan extends Component {
     }
 
     wrapTouchEvent(fn) {
-        return function(e) {
+        return (e) => {
             let posX = e.touches[0].clientX;
             let posY = e.touches[0].clientY;
 
@@ -42,7 +42,7 @@ export default class Pan extends Component {
     }
 
     wrapMouseEvent(fn) {
-        return function(e) {
+        return (e) => {
             let posX = e.x;
             let posY = e.y;
 
@@ -53,10 +53,21 @@ export default class Pan extends Component {
     wrapScrollEvent(fn) {
         let posX = 0;
         let posY = 0;
+        
+        this.setState({
+            dragging: false
+        });
 
-        return function(e) {
-            posX -= e.deltaX;
-            posY -= e.deltaY;
+        return (e) => { 
+            let maxDeltaX = this.props.blockWidth;
+            let maxDeltaY = this.props.blockHeight;
+
+            let deltaXSign = e.deltaX < 0 ? -1 : 1;
+            let deltaYSign = e.deltaY < 0 ? -1 : 1;
+            
+            posX -= Math.abs(e.deltaX) > maxDeltaX ? maxDeltaX * deltaXSign : e.deltaX;
+            posY -= Math.abs(e.deltaY) > maxDeltaY ? maxDeltaY * deltaYSign : e.deltaY;
+
             fn(e, posX, posY, true);
         }
     }
@@ -67,6 +78,7 @@ export default class Pan extends Component {
             pointerLeft: posX,
             pointerTop: posY,
         });
+        e.preventDefault();
     }
 
     handlePanMove = (e, posX, posY, forceDragg) => {
@@ -82,6 +94,8 @@ export default class Pan extends Component {
 
             
             let isOutsideRight = newPanLeft + this.props.width < this.props.containerWidth;
+            let isOutsideBottom = newPanTop + this.props.height < this.props.containerHeight;
+
             let verticalDirection = diffTop < 0 ? -1 : 1;
             verticalDirection = diffTop === 0 ? 0 : verticalDirection; 
 
@@ -118,6 +132,8 @@ export default class Pan extends Component {
                 panTop: this.state.panTop,
                 panLeft: this.state.panLeft,
                 verticalDirection: this.state.verticalDirection,
+                blockWidth: this.props.blockWidth,
+                blockHeight: this.props.blockHeight,
                 containerWidth: this.props.containerWidth,
                 containerHeight: this.props.containerHeight
             });

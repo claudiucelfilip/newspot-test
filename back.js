@@ -13,7 +13,7 @@ function generateLayout(priorities) {
 }
 
 let orders = Orders(5);
-// console.log(orders);
+console.log(orders);
 Object.keys(orders).forEach(key => {
     orders[key].forEach(order => {
         let combinations = Combinations(order.order);

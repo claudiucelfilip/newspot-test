@@ -2,17 +2,17 @@ const express = require('express');
 const router = express.Router();
 const mongo = require('./data/mongo');
 
-router.get('/articles/:source', (req, res, next) => {
+router.get('/articles', (req, res, next) => {
     let col = mongo.db.collection('articles');
-    let source = params.source;
+    // let source = params.source;
 
 
-    if (!source) {
-        res.status(400);
-        res.send('No source specified');
-    }
+    // if (!source) {
+    //     res.status(400);
+    //     res.send('No source specified');
+    // }
 
-    col.find({ source }).toArray((err, articles) => {
+    col.find({}).toArray((err, articles) => {
         res.send(articles);
     });
 });

@@ -16,28 +16,23 @@ function generateFakeData(len) {
 
 class Page extends Component {
 
-    componentWillMount() {
-        this.props.receiveArticles(generateFakeData(140));
-    }
     render() {
         let articles = this.props.articles;
         
         return <div>
             <h1>Hello world</h1>
-            <Scroll 
+            
+            {articles.length ? <Scroll 
                 articles={articles} 
-                blockWidth={120}
-                blockHeight={100}
-                cols={12}
-            />
+                blockWidth={640}
+                blockHeight={480}
+                cols={4}
+            /> : <span>Loading</span>}
         </div>;
     }
 }
 function mapDispatchToProps(dispatch) {
     return {
-        receiveArticles: (len) => {
-            return dispatch(receiveArticles(len));
-        }
     }
 }
 

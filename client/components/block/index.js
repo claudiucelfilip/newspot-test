@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import Article from '../article';
+import Articles from '../articles';
 
 const visibilities = [
     'visible',
@@ -16,7 +16,7 @@ const backgrounds = [
     'blue',
     'cyan'
 ];
-export default class Page extends Component {
+export default class Block extends Component {
     constructor() {
         super();
         this.state = {
@@ -107,13 +107,15 @@ export default class Page extends Component {
             top: this.state.blockTop + 'px',
             width: this.props.blockWidth + 'px',
             height: this.props.blockHeight + 'px',
-            background: backgrounds[this.state.visibility]
+            // background: backgrounds[this.state.visibility]
         };
 
         return <div className="block" 
             index={this.props.index} 
-            ref={node => this.node = node} style={style}>
-            {this.props.index} {this.props.verticalIndex}
+            ref={node => this.node = node} 
+            style={style}>
+            {/* {this.props.index} {this.props.verticalIndex} */}
+            <Articles articles={this.props.block.articles}></Articles>
         </div>;
     }
 }

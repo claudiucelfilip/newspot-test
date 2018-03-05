@@ -132,7 +132,7 @@ var scrape = async url => {
                     .filter(item => getNodeText(item).length > 50);
 
                 if (texts.length) {
-                    if (parentCount > 3 && getProximity(texts[0], link) > 30) {
+                    if (parentCount > 3 || getProximity(texts[0], link) > 30) {
                         return;
                     }
                     texts = texts
@@ -176,12 +176,16 @@ var scrape = async url => {
                         .filter(image => !image.classList.contains('already-used'))
                         .reduce(
                             (acc, image) => {
+                                var imageUrl = image.getAttribute('data-src') || image.getAttribute('data-original') || image.src;
+                              
+                                imageUrl = imageUrl.replace(/^\/(?!=\/)/, location.href);
+                              
                                 if (
                                     image.width >= acc.width &&
                                     image.height >= acc.height
                                 ) {
                                     Object.assign(acc, {
-                                        url: image.src,
+                                        url: imageUrl,
                                         image,
                                         width: image.width,
                                         height: image.height
@@ -259,11 +263,18 @@ var scrape = async url => {
             .slice(0, 30);
 
         links = links.map(link => {
+            let image = getImage(link.element); 
+            let excerpt = getExcerpt(link.element);
+
+            if (!image) {
+                link.priority--;
+            }
+
             link = Object.assign({}, link, {
-                image: getImage(link.element),
-                excerpt: getExcerpt(link.element)
+                image,
+                excerpt
             });
-            // delete link.element;
+            delete link.element;
             return link;
         });
 

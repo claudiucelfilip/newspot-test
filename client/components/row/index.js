@@ -43,8 +43,9 @@ export default class Row extends Component {
     render() {
         return <section className="row">
         {
-            this.props.blocks.map((block, index) => <Block key={index} 
+            this.props.blocks.map((block, index) => <Block 
                 {...this.props}
+                key={index} 
                 verticalIndex={this.state.verticalIndex}
                 ref={block => this.blockRefs[index] = block}
                 onVisibilityChange={this.handleVisibility}

@@ -23,5 +23,8 @@ module.exports = {
             name: 'client',
         }
     },
-    urls: []
+    sources: [{
+        url: '',
+        name: ''
+    }]
 }

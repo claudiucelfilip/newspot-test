@@ -4,6 +4,7 @@ iframe {
     width: 100%;
     height: 100%;
     margin: 0;
+    overflow: hidden;
 }
 
 * {
@@ -11,23 +12,99 @@ iframe {
 }
 
 .scroll {
-    width: 80%;
-    height: 80%;
+    width: 100%;
+    height: 100%;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    border: solid 5px #333;
     position: absolute;
-    
-    box-shadow: 0 0 100px 10px rgba(0,0,0,0.2);
-    /* overflow: hidden; */
+    overflow: hidden;
 }
 
 .block {
-    border: solid 1px #666;
+    border: solid 1px #ddd;
     position: absolute;
 }
 
 .pan {
     position: relative;
+}
+
+.articles {
+    position: absolute;
+    width: calc(100% - 10px);
+    height: calc(100% - 10px);
+    top: 10px;
+    left: 10px;
+    display: grid;
+    grid-template-columns: minmax(33%, 12fr);
+    grid-template-rows: minmax(100px, 9fr);
+    grid-gap: 10px;
+}
+.padding {
+    padding: 10px;
+}
+.article {
+    /* position: absolute; */
+    display: grid;
+    grid-gap: 10px;
+    grid-template-columns: minmax(33%, 2fr);
+    grid-template-rows: minmax(80px, 1fr);
+    border: solid 1px #eee
+}
+
+.article--wide > * {
+    grid-row: 1;
+}
+/*.article--tall.grid--two {
+    grid-template-rows: minmax(50%, 1fr) minmax(50%, 1fr);
+} */
+
+.content {
+    /* display: grid;
+    grid-template-rows: 2fr; */
+}
+
+.article--wide .content {
+    flex-direction: row;
+}
+
+.article--tall .content {
+    flex-direction: column;
+}
+
+.title {
+    display: block;
+    margin-top: 0; 
+}
+h2 {
+    font-size: 20px;  
+    margin: 0 5px 5px 5px;
+    overflow: hidden;    
+}
+h3 { 
+    font-size: 16px;
+    margin: 0 5px 5px 5px;
+}
+.text {
+    font-size: 14px;
+    padding: 5px;
+    overflow: hidden;
+}
+
+a {
+    color: inherit;
+    text-decoration: none;
+}
+
+.image {
+    overflow: hidden;
+    background-size: cover;
+    background-position: 50% 50%;
+    background-repeat: no-repeat;
+}
+img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
