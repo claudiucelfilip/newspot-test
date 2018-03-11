@@ -235,6 +235,9 @@ function getArticle() {
                 return scrape(data.article.url)
                     .then(content => {
                         removeMessage(resp.id);
+                        if (!content || content.length < 2) {
+                            return Promise.reject('No content');
+                        }
                         return Object.assign({}, data.article, {
                             content,
                             revision: data.revision,

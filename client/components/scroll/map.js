@@ -46,6 +46,7 @@ function getRandomSolution(solutions) {
     return solutions[index];
 }
 
+
 function getLayouts(articles) {
     let orderedArticles = articles.slice().sort((a, b) => a.priority - b.priority).reverse();
     let priorities = orderedArticles.map(article => article.priority);

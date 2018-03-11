@@ -102,11 +102,18 @@ export default class Block extends Component {
     }
 
     render() {
+        let backgrounds = [
+            'rgba(188, 52, 40, 1.000)',
+            'rgba(199, 55, 42, 1.000)',
+            'rgba(177, 49, 37, 1.000)',
+            'rgba(188, 52, 40, 1.000)'
+        ]
         let style = {
             left: this.state.blockLeft + 'px',
             top: this.state.blockTop + 'px',
             width: this.props.blockWidth + 'px',
             height: this.props.blockHeight + 'px',
+            background: backgrounds[this.props.index * this.props.verticalIndex % 4]
             // background: backgrounds[this.state.visibility]
         };
 

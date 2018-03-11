@@ -5,6 +5,10 @@ iframe {
     height: 100%;
     margin: 0;
     overflow: hidden;
+    font-family: 'Open Sans', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    color: #fff;
 }
 
 * {
@@ -22,7 +26,7 @@ iframe {
 }
 
 .block {
-    border: solid 1px #ddd;
+    /* border: solid 1px #ddd; */
     position: absolute;
 }
 
@@ -32,41 +36,51 @@ iframe {
 
 .articles {
     position: absolute;
-    width: calc(100% - 10px);
-    height: calc(100% - 10px);
-    top: 10px;
-    left: 10px;
+    width: calc(100% - 80px);
+    height: calc(100% - 80px);
+    top: 40px;
+    left: 40px;
     display: grid;
     grid-template-columns: minmax(33%, 12fr);
     grid-template-rows: minmax(100px, 9fr);
-    grid-gap: 10px;
+    grid-gap: 25px;
 }
-.padding {
-    padding: 10px;
+.article--text-columns .text {
+    column-count: 2;
 }
 .article {
     /* position: absolute; */
     display: grid;
     grid-gap: 10px;
     grid-template-columns: minmax(33%, 2fr);
-    grid-template-rows: minmax(80px, 1fr);
-    border: solid 1px #eee
+    grid-template-rows: minmax(150px, 1fr) 1fr;
+    /* border: solid 1px #eee */
 }
 
+.article.article--wide {
+    grid-template-rows: minmax(80px, 1fr);
+}
 .article--wide > * {
     grid-row: 1;
+}
+
+.article--wide-text .text {
+    column-count: 2;
+}
+.article--ultra-wide-text .text {
+    column-count: 3;
 }
 /*.article--tall.grid--two {
     grid-template-rows: minmax(50%, 1fr) minmax(50%, 1fr);
 } */
 
 .content {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.4;
+    overflow: hidden;
     /* display: grid;
     grid-template-rows: 2fr; */
-}
-
-.article--wide .content {
-    flex-direction: row;
 }
 
 .article--tall .content {
@@ -75,21 +89,29 @@ iframe {
 
 .title {
     display: block;
-    margin-top: 0; 
+    margin: 0 5px 5px 5px;
+}
+
+h1, h2, h3, h4, h5 {
+    font-family: 'Crete Round', serif;
+    margin: 0;
+    font-weight: normal;
 }
 h2 {
-    font-size: 20px;  
-    margin: 0 5px 5px 5px;
-    overflow: hidden;    
+    font-size: 24px;  
 }
 h3 { 
-    font-size: 16px;
-    margin: 0 5px 5px 5px;
+    font-size: 22px;
+}
+
+h4 { 
+    font-size: 20px;
 }
 .text {
     font-size: 14px;
     padding: 5px;
-    overflow: hidden;
+    line-height: 1.6;
+    opacity: 0.8;
 }
 
 a {
@@ -102,6 +124,9 @@ a {
     background-size: cover;
     background-position: 50% 50%;
     background-repeat: no-repeat;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.4);
+    border-radius: 3px;
+    opacity: 0.9;
 }
 img {
     width: 100%;

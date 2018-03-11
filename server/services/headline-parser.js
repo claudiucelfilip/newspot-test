@@ -8,7 +8,7 @@ var scrape = async url => {
     const browser = await puppeteer.launch();
     const page = await browser.newPage();
     await page.goto(url);
-
+    
     let links = await page.evaluate(() => {
         function cleanText(text) {
             text = text.trim();
@@ -132,7 +132,7 @@ var scrape = async url => {
                     .filter(item => getNodeText(item).length > 50);
 
                 if (texts.length) {
-                    if (parentCount > 3 || getProximity(texts[0], link) > 30) {
+                    if (parentCount > 4 || getProximity(texts[0], link) > 30) {
                         return;
                     }
                     texts = texts
@@ -158,7 +158,7 @@ var scrape = async url => {
 
         function getImage(link) {
             var parent = link.parentNode;
-            var images;
+            var images, divImages;
             var parentCount = 1;
             var fontSize = parseInt(
                 getComputedStyle(link).getPropertyValue('font-size')
@@ -168,6 +168,16 @@ var scrape = async url => {
                 images = Array.prototype.slice.call(
                     parent.querySelectorAll('img')
                 );
+
+                if (!images.length) {
+                    images = Array.prototype.slice.call(
+                        parent.querySelectorAll('*')
+                    );
+                    images = images.filter(image => {
+                        return image.style.backgroundImage !== '' && image.offsetWidth >= 70 && image.offsetHeight >= 50;
+                    });                 
+                }
+
                 if (images.length) {
                     if (parentCount > 3 && getProximity(images[0], link) > 30) {
                         return;
@@ -176,19 +186,23 @@ var scrape = async url => {
                         .filter(image => !image.classList.contains('already-used'))
                         .reduce(
                             (acc, image) => {
-                                var imageUrl = image.getAttribute('data-src') || image.getAttribute('data-original') || image.src;
+                                var imageUrl = image.src;
+
+                                if (!imageUrl || /(loader)|(loading)|(empty)|(\.gif)/.test(imageUrl)) {
+                                    imageUrl = image.getAttribute('data-src') || image.getAttribute('data-original') || getComputedStyle(image).getPropertyValue('background-image').replace(/(\)(?=$))|"|'|(url\()/g, '') || imageUrl;
+                                }
                               
                                 imageUrl = imageUrl.replace(/^\/(?!=\/)/, location.href);
                               
                                 if (
-                                    image.width >= acc.width &&
-                                    image.height >= acc.height
+                                    image.offsetWidth >= acc.width &&
+                                    image.offsetHeight >= acc.height
                                 ) {
                                     Object.assign(acc, {
                                         url: imageUrl,
                                         image,
-                                        width: image.width,
-                                        height: image.height
+                                        width: image.offsetWidth,
+                                        height: image.offsetHeight
                                     });
                                 }
                                 return acc;
@@ -259,7 +273,7 @@ var scrape = async url => {
         links = links
             .slice()
             .sort((a, b) => b.priority - a.priority)
-            .filter(link => link.priority > 5)
+            // .filter(link => link.priority > 5)
             .slice(0, 30);
 
         links = links.map(link => {

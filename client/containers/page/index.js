@@ -24,8 +24,8 @@ class Page extends Component {
             
             {articles.length ? <Scroll 
                 articles={articles} 
-                blockWidth={640}
-                blockHeight={480}
+                blockWidth={924}
+                blockHeight={868}
                 cols={4}
             /> : <span>Loading</span>}
         </div>;
