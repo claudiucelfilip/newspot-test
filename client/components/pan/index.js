@@ -103,11 +103,11 @@ export default class Pan extends Component {
                 pointerLeft: posX,
                 pointerTop: posY,
                 verticalDirection,
-                panLeft: !isOutsideLeft && !isOutsideRight ? newPanLeft : this.state.panLeft,
+                // panLeft: !isOutsideLeft && !isOutsideRight ? newPanLeft : this.state.panLeft,
                 panTop: !isOutsideTop ? newPanTop : this.state.panTop,
             });
 
-            e.preventDefault();
+            // e.preventDefault();
         }
     }
 
@@ -134,6 +134,7 @@ export default class Pan extends Component {
                 verticalDirection: this.state.verticalDirection,
                 blockWidth: this.props.blockWidth,
                 blockHeight: this.props.blockHeight,
+                backgrounds: this.props.backgrounds,
                 containerWidth: this.props.containerWidth,
                 containerHeight: this.props.containerHeight
             });

@@ -50,6 +50,8 @@ export default class Scroll extends Component {
             content: []
         });
 
+        let blockWidth = this.container.offsetWidth;
+
         let articles = findLayouts(this.props.articles, 3);
 
         let rows = blocks.reduce((acc, block, index) => {
@@ -66,7 +68,8 @@ export default class Scroll extends Component {
             <Pan containerWidth={this.state.width}
                 containerHeight={this.state.height}
                 ref={pan => this.pan = pan}
-                blockWidth={this.props.blockWidth}
+                blockWidth={blockWidth}
+                backgrounds={this.props.backgrounds}
                 blockHeight={this.props.blockHeight}
                 width={panWidth}
                 height={panHeight}>

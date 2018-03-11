@@ -1,10 +1,23 @@
 import React, { Component } from 'react';
-import Block from '../block';
+import Scroll from '../scroll';
+
 
 export default class Column extends Component {
     render() {
-        return <section className="column">
-            {this.props.articles.map((article, index) => <Block key={index} article={article}/>)}
+        let style = {
+            background: this.props.backgrounds[0],
+            width: this.props.blockWidth + 'px'
+        };
+        
+        return <section className="column" style={style}>
+            <h2 className="source-title" >{this.props.title}</h2>
+            {this.props.articles.length ? <Scroll 
+                articles={this.props.articles}
+                title={this.props.title}
+                backgrounds={this.props.backgrounds}
+                blockHeight={this.props.blockHeight}
+                cols={1}
+            /> : <span>Loading</span>}
         </section>;
     }
 }
